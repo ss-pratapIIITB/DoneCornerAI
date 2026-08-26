@@ -22,6 +22,7 @@ coverage/
 .trueforge/
 *.sqlite
 *.sqlite-journal
+.data/
 
 # Visual brainstorm companion (session mockups)
 .superpowers/
