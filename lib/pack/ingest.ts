@@ -3,6 +3,11 @@ import { runCloseSubagents, type CloseSubagents } from "@/lib/analysis/subagents
 import { uploadCloseFile } from "@/lib/pack/parse-upload";
 import { runSandboxClean, type SandboxCleanResult } from "@/lib/pack/sandbox-clean";
 
+export type CloseUploadInput = {
+  filename: string;
+  bytes: string;
+};
+
 export type CloseIngestResult = {
   storedPath: string;
   instruction: string;
@@ -10,7 +15,7 @@ export type CloseIngestResult = {
 
 export async function ingestCloseUpload(
   db: DatabaseSync,
-  input: { filename: string; bytes: string },
+  input: CloseUploadInput,
 ): Promise<CloseIngestResult> {
   const stored = uploadCloseFile(input);
   const cleaned = await runSandboxClean(db, stored.storedPath);

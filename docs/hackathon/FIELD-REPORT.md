@@ -23,7 +23,7 @@ Session create/resume, turn streaming for the query bar, `require_approval_for_t
 
 - Qodo on PR 5: ARR filtered a `scenario` column that does not exist; gross margin and runway were the wrong units; unimplemented metrics fell through to a P&L sum. Fixed in PR 6.
 - Qodo on PR 6: `resolve` could be called without a publisher identity. Resolve now requires `canPublish`.
-- Qodo on PR 7: naive CSV split, USD relabel, non-atomic upload replace, Excel succeeding with zero rows. Cleaner now parses quoted fields, skips non-USD, replaces `source=upload` in a transaction, and rejects Excel.
+- Qodo on PR 7: naive CSV split, USD relabel, non-atomic upload replace, Excel succeeding with zero rows. Follow-up: recognized zero-row files now clear prior uploads; non-numeric amounts reject the file.
 - Sample pack vs sandbox: judges can run without Daytona; uploads must not silently skip the child cleaner.
 - Query bar stays disabled when TrueForge is down — by design, so the cube still works.
 

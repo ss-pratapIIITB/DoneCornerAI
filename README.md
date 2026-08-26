@@ -46,6 +46,6 @@ Substantive work goes through pull requests. Do not push application changes str
 
 Qodo is required on every substantive PR.
 
-- Representative PR: https://github.com/ss-pratapIIITB/DoneCornerAI/pull/5 (findings) · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/6 (fixes)
-- What Qodo surfaced: six cube bugs (ARR `scenario` column, gross margin as dollars, runway as burn, unimplemented metrics falling through to P&L sums, cash/ARR drill grains, non-transactional sample reload)
-- What we changed or dismissed: all six addressed in PR 6 — table-aware filters, derived metrics, period-only cash/ARR grains, and a transactional sample load. Nothing dismissed.
+- Representative PRs: https://github.com/ss-pratapIIITB/DoneCornerAI/pull/5 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/6 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/7
+- What Qodo surfaced: cube metric bugs (PR 5/6); ingest bugs (quoted CSV, USD relabel, non-atomic replace, Excel zero-rows, empty uploads keeping stale data, non-numeric amounts stored as zero)
+- What we changed or dismissed: cube fixes in PR 6. Ingest parser, USD skip, transactional replace, and Excel 4xx in PR 7. Empty recognized uploads now clear prior `source=upload` rows; malformed numbers reject the file. Host child-process sandbox kept (sample pack must run without Daytona). Publish approval stays the only human gate.

@@ -117,4 +117,20 @@ describe("POST /api/pack/upload", () => {
     expect(body.rowsLoaded).toBe(0);
     expect(body.analysis).toBeNull();
   });
+
+  it("returns 400 when a recognized CSV has a non-numeric amount", async () => {
+    setup();
+    process.env.TRUEFORGE_SANDBOX = "1";
+    const csv = [
+      PNL_HEADER,
+      "2026-01,northstar,other,subscription,abc,USD,actual,upload",
+    ].join("\n");
+    const res = await POST(
+      req({
+        filename: "facts_pnl.csv",
+        bytes: Buffer.from(csv).toString("base64"),
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
 });
