@@ -1,0 +1,27 @@
+# Local env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and build
+node_modules/
+dist/
+.next/
+out/
+.turbo/
+coverage/
+
+# OS / editor
+.DS_Store
+*.log
+.idea/
+
+# TrueForge local runtime
+.trueforge/
+*.sqlite
+*.sqlite-journal
+
+# Visual brainstorm companion (session mockups)
+.superpowers/
