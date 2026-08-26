@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 4 — Qodo High findings follow-up
+**Phase:** 4 — Catch-up PR + Qodo High fixes
 
-**Current step:** `fix/qodo-cube-metrics` — six cube bugs from PR 5. Then TrueForge sandbox ingest, Field Report, Radio Traffic.
+**Current step:** [PR 6](https://github.com/ss-pratapIIITB/DoneCornerAI/pull/6) lands the portal slice that missed `main` and the six cube bugs. Next: TrueForge sandbox ingest, Field Report, Radio Traffic.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
