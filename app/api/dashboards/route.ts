@@ -1,7 +1,9 @@
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
   ensureOrgClose,
+  forkOrgToPersonal,
   getDashboard,
+  listPersonalDashboards,
   savePersonalDashboard,
   type Dashboard,
 } from "@/lib/dashboards/store";
@@ -14,10 +16,27 @@ export async function GET(req: Request): Promise<Response> {
   const db = getDb();
   migrate(db);
   ensureOrgClose(db);
-  const id = new URL(req.url).searchParams.get("id") ?? "org-close";
+  const user = userFromRequest(req);
+  const url = new URL(req.url);
+  if (url.searchParams.get("mine") === "1") {
+    return Response.json(listPersonalDashboards(db, user.id));
+  }
+  const id = url.searchParams.get("id") ?? "org-close";
   const dashboard = getDashboard(db, id);
   if (!dashboard) return Response.json({ error: "Not found" }, { status: 404 });
   return Response.json(dashboard);
+}
+
+export async function POST(req: Request): Promise<Response> {
+  try {
+    const user = userFromRequest(req);
+    if (!user.canEdit) throw new ForbiddenError();
+    const db = getDb();
+    migrate(db);
+    return Response.json(forkOrgToPersonal(db, user.id));
+  } catch (err) {
+    return jsonError(err);
+  }
 }
 
 export async function PUT(req: Request): Promise<Response> {

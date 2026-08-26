@@ -1,25 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import type { CubeQuery } from "@/lib/cube/query";
 import { assertCanEdit } from "@/lib/identity/errors";
+import type { Dashboard, Widget } from "@/lib/dashboards/widgets";
 
-export type WidgetType = "kpi" | "bar" | "line" | "table";
-
-export type Widget = {
-  id: string;
-  type: WidgetType;
-  title: string;
-  query: CubeQuery;
-  note: string;
-};
-
-export type Dashboard = {
-  id: string;
-  name: string;
-  owner: "org" | string;
-  forkedFrom: string | null;
-  widgets: Widget[];
-};
+export type { Dashboard, Widget, WidgetType } from "@/lib/dashboards/widgets";
+export { setWidgetNote, widgetFromMetric } from "@/lib/dashboards/widgets";
 
 type DashboardRow = {
   id: string;
@@ -101,4 +86,16 @@ export function forkOrgToPersonal(db: DatabaseSync, userId: string): Dashboard {
     forkedFrom: "org-close",
     widgets: structuredClone(org.widgets),
   });
+}
+
+export function listPersonalDashboards(
+  db: DatabaseSync,
+  userId: string,
+): Dashboard[] {
+  const rows = db
+    .prepare(
+      "SELECT id, name, owner, forked_from, widgets_json FROM dashboards WHERE owner = ?",
+    )
+    .all(userId) as DashboardRow[];
+  return rows.map(rowToDashboard);
 }

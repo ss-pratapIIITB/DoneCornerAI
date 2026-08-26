@@ -8,6 +8,8 @@ import {
   forkOrgToPersonal,
   getDashboard,
   savePersonalDashboard,
+  setWidgetNote,
+  widgetFromMetric,
 } from "@/lib/dashboards/store";
 import type { Dashboard, Widget } from "@/lib/dashboards/store";
 import { describeSchema } from "@/lib/cube/schema";
@@ -65,5 +67,33 @@ describe("describeSchema", () => {
     const schema = describeSchema();
     expect(schema.tables.some((t) => t.name === "facts_pnl")).toBe(true);
     expect(schema.metrics.some((m) => m.id === "revenue")).toBe(true);
+  });
+});
+
+describe("schema widgets", () => {
+  it("builds a bar widget from a metric", () => {
+    const widget = widgetFromMetric("revenue", "bar");
+    expect(widget.type).toBe("bar");
+    expect(widget.query.metric).toBe("revenue");
+    expect(widget.query.grain).toBe("period");
+    expect(widget.note).toBe("");
+  });
+
+  it("writes a note onto a personal widget without touching org", () => {
+    const db = freshDb();
+    ensureOrgClose(db);
+    const personal = forkOrgToPersonal(db, "cfo");
+    const widget = widgetFromMetric("revenue", "kpi");
+    savePersonalDashboard(db, "cfo", { ...personal, widgets: [widget] });
+    const noted = setWidgetNote(
+      getDashboard(db, personal.id)!,
+      widget.id,
+      "ARR is subscription.",
+    );
+    savePersonalDashboard(db, "cfo", noted);
+    expect(getDashboard(db, personal.id)?.widgets[0]?.note).toBe(
+      "ARR is subscription.",
+    );
+    expect(getDashboard(db, "org-close")?.widgets).toHaveLength(0);
   });
 });
