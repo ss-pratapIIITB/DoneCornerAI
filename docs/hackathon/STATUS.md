@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 2 — Plan approved; executing Task 1 (scaffold)
+**Phase:** 2 — Plan executing on `feat/close-pack` (PR 5)
 
-**Current step:** Build `feat/close-pack` — Next.js + Vitest scaffold
+**Current step:** Tasks 1–8 done (navigable charts verified). Remaining: schema notes, TrueForge MCP, README polish.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -31,9 +31,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [ ] TrueForge local harness + model + sandbox
 - [ ] Data plane (sample finance pack + MCP)
 - [ ] Agent: ingest → sandbox analysis → insights (subagents)
-- [ ] Portal shell: view default, edit toggle
-- [ ] Default dashboard + custom dashboards
-- [ ] Navigable charts (click filter, drill down/up)
+- [x] Portal shell: view default, edit toggle
+- [x] Default dashboard + custom dashboards
+- [x] Navigable charts (click filter, drill down/up)
 - [ ] On-the-fly query → explanation / chart
 - [ ] Approval gate on publish / sensitive export
 - [ ] Persistent session survives refresh
