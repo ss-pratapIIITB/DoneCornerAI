@@ -60,3 +60,25 @@ describe("MCP JSON-RPC", () => {
     expect(body.periods).toBeGreaterThan(0);
   });
 });
+
+describe("MCP HTTP route", () => {
+  it("returns 202 for notifications with no JSON-RPC body", async () => {
+    process.env.DONECORNER_DB = join(
+      mkdtempSync(join(tmpdir(), "dc-mcp-route-")),
+      "t.sqlite",
+    );
+    const { POST } = await import("@/app/api/mcp/route");
+    const res = await POST(
+      new Request("http://localhost/api/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "notifications/initialized",
+        }),
+      }),
+    );
+    expect(res.status).toBe(202);
+    expect(await res.text()).toBe("");
+  });
+});

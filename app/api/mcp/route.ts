@@ -28,6 +28,9 @@ export async function POST(req: Request): Promise<Response> {
     const reply = await handleMcpJsonRpc(db, msg);
     if (reply) replies.push(reply);
   }
+  if (replies.length === 0) {
+    return new Response(null, { status: 202 });
+  }
   const payload = Array.isArray(body) ? replies : (replies[0] ?? {});
   if (wantsSse) return sse(payload);
   return Response.json(payload);
