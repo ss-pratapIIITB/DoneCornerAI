@@ -33,7 +33,9 @@ export function resolvePublish(
   db: DatabaseSync,
   id: string,
   decision: "approved" | "denied",
+  actorId: string,
 ): { state: PublishState } {
+  assertCanPublish(actorId);
   const row = db
     .prepare("SELECT id, user_id, personal_id, state FROM publishes WHERE id = ?")
     .get(id) as PublishRow | undefined;

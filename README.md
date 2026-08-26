@@ -4,7 +4,7 @@ CFO **close-pack** portal for the [Agent Harness Hackathon](https://www.wemakede
 
 Drop P&L / cash / budget files (or load the shipped **Northstar** sample pack). The portal opens a navigable dashboard. Default mode is **view**. Click charts to drill Period → Function → Account. Org Close publish is the human approval gate.
 
-Instructions: [`AGENTS.md`](AGENTS.md). Checklist: [`docs/hackathon/STATUS.md`](docs/hackathon/STATUS.md). Formulas: [`docs/metrics.md`](docs/metrics.md). Demo script: [`docs/hackathon/DEMO.md`](docs/hackathon/DEMO.md).
+Instructions: [`AGENTS.md`](AGENTS.md). Checklist: [`docs/hackathon/STATUS.md`](docs/hackathon/STATUS.md). Formulas: [`docs/metrics.md`](docs/metrics.md). Demo script: [`docs/hackathon/DEMO.md`](docs/hackathon/DEMO.md). Field report: [`docs/hackathon/FIELD-REPORT.md`](docs/hackathon/FIELD-REPORT.md).
 
 ## Run
 
