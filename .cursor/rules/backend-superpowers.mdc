@@ -1,0 +1,14 @@
+---
+description: Superpowers workflow for backend, agents, data, and API work
+globs: "**/{server,api,agent,mcp,sandbox,lib,packages}/**/*.{ts,tsx,js,py}"
+alwaysApply: false
+---
+
+# Backend
+
+1. Read `.cursor/skills/using-superpowers/SKILL.md`, then the skill for the current STATUS step.
+2. New behavior: failing test first (`test-driven-development`).
+3. Bugs: `systematic-debugging` before patching.
+4. TrueForge SDK for the agent loop. Do not reimplement harness features.
+5. Irreversible actions require an approval tool outcome, not a UI-only confirm.
+6. Before claiming done: `verification-before-completion` — run tests, paste evidence.
