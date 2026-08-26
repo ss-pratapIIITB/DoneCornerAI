@@ -38,11 +38,24 @@ export function CloseCanvas() {
     try {
       const res = await fetch("/api/pack/load", { method: "POST" });
       if (!res.ok) throw new Error("Could not load the sample pack");
-      const body = (await res.json()) as { periods: number };
+      const body = (await res.json()) as {
+        periods: number;
+        analysis?: {
+          pnl: { name: string };
+          cash: { name: string };
+          growth: { name: string };
+        };
+      };
       setPeriods(body.periods);
       const next = defaultQuery;
       setQuery(next);
       await runCube(next);
+      if (body.analysis) {
+        setAgent(
+          "done",
+          `${body.analysis.pnl.name}, ${body.analysis.cash.name}, and ${body.analysis.growth.name} slices finished in parallel.`,
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Load failed");
     } finally {
@@ -88,10 +101,10 @@ export function CloseCanvas() {
         </p>
       )}
       <label className="upload">
-        Drop a CSV/Excel close file
+        Drop a CSV close file
         <input
           type="file"
-          accept=".csv,.xlsx,.xls"
+          accept=".csv"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
@@ -110,6 +123,8 @@ export function CloseCanvas() {
                 const body = (await res.json()) as {
                   error?: string;
                   instruction?: string;
+                  ranIn?: string;
+                  rowsLoaded?: number;
                 };
                 if (!res.ok) {
                   setError(body.error ?? "Upload rejected");
@@ -118,9 +133,16 @@ export function CloseCanvas() {
                 }
                 setError(null);
                 setAgent(
-                  "running",
-                  body.instruction ?? "File stored for sandbox clean.",
+                  "done",
+                  body.rowsLoaded
+                    ? `Sandbox (${body.ranIn}) loaded ${body.rowsLoaded} upload rows.`
+                    : (body.instruction ?? "File stored."),
                 );
+                if (body.rowsLoaded) {
+                  const next = defaultQuery;
+                  setQuery(next);
+                  await runCube(next);
+                }
               });
             };
             reader.readAsArrayBuffer(file);

@@ -9,7 +9,7 @@ import {
 } from "@/lib/dashboards/store";
 import { requestPublishOrg } from "@/lib/dashboards/publish";
 import { loadSamplePack } from "@/lib/pack/load-sample";
-import { uploadCloseFile } from "@/lib/pack/parse-upload";
+import { ingestCloseUpload } from "@/lib/pack/ingest";
 
 export const TOOL_NAMES = [
   "load_sample_pack",
@@ -33,7 +33,7 @@ export async function callTool(
     case "load_sample_pack":
       return loadSamplePack(db);
     case "upload_close_file":
-      return uploadCloseFile({
+      return ingestCloseUpload(db, {
         filename: String(args.filename ?? "upload.csv"),
         bytes: String(args.bytes ?? ""),
       });

@@ -35,7 +35,7 @@ describe("publish", () => {
     savePersonalDashboard(db, "cfo", { ...personal, widgets: [widget] });
     const req = requestPublishOrg(db, "cfo", personal.id);
     expect(req.state).toBe("pending");
-    const resolved = resolvePublish(db, req.id, "denied");
+    const resolved = resolvePublish(db, req.id, "denied", "cfo");
     expect(resolved.state).toBe("denied");
     expect(getDashboard(db, "org-close")?.widgets).toHaveLength(0);
   });
@@ -46,7 +46,7 @@ describe("publish", () => {
     const personal = forkOrgToPersonal(db, "fpna");
     savePersonalDashboard(db, "fpna", { ...personal, widgets: [widget] });
     const req = requestPublishOrg(db, "fpna", personal.id);
-    resolvePublish(db, req.id, "approved");
+    resolvePublish(db, req.id, "approved", "fpna");
     expect(getDashboard(db, "org-close")?.widgets).toEqual([widget]);
     expect(getDashboard(db, personal.id)?.widgets).toEqual([widget]);
   });
@@ -61,5 +61,19 @@ describe("publish", () => {
     } catch (err) {
       expect(err).toMatchObject({ code: "FORBIDDEN" });
     }
+  });
+
+  it("forbids viewer from resolving a pending publish", () => {
+    const db = freshDb();
+    ensureOrgClose(db);
+    const personal = forkOrgToPersonal(db, "cfo");
+    const req = requestPublishOrg(db, "cfo", personal.id);
+    try {
+      resolvePublish(db, req.id, "approved", "viewer");
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toMatchObject({ code: "FORBIDDEN" });
+    }
+    expect(getDashboard(db, "org-close")?.widgets).toHaveLength(0);
   });
 });

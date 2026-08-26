@@ -1,6 +1,7 @@
 import { jsonError, userFromRequest } from "@/lib/api/http";
 import { ForbiddenError } from "@/lib/identity/errors";
-import { uploadCloseFile } from "@/lib/pack/parse-upload";
+import { getDb, migrate } from "@/lib/db/sqlite";
+import { ingestCloseUpload } from "@/lib/pack/ingest";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,13 @@ export async function POST(req: Request): Promise<Response> {
     if (!body.filename || !body.bytes) {
       return Response.json({ error: "filename and bytes required" }, { status: 400 });
     }
-    return Response.json(
-      uploadCloseFile({ filename: body.filename, bytes: body.bytes }),
-    );
+    const db = getDb();
+    migrate(db);
+    const result = await ingestCloseUpload(db, {
+      filename: body.filename,
+      bytes: body.bytes,
+    });
+    return Response.json(result);
   } catch (err) {
     return jsonError(err);
   }

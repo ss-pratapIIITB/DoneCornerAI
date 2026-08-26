@@ -24,10 +24,13 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json(requestPublishOrg(db, user.id, body.personalId));
     }
     if (body.action === "resolve") {
+      if (!user.canPublish) throw new ForbiddenError();
       if (!body.id || !body.decision) {
         return Response.json({ error: "id and decision required" }, { status: 400 });
       }
-      return Response.json(resolvePublish(db, body.id, body.decision));
+      return Response.json(
+        resolvePublish(db, body.id, body.decision, user.id),
+      );
     }
     return Response.json({ error: "Unknown action" }, { status: 400 });
   } catch (err) {

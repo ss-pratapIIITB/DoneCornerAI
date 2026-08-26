@@ -1,6 +1,7 @@
 {
   "name": "close-pack",
   "instructions": "Load the Northstar sample pack or accept an upload. Run P&L, Cash, and Growth analysis. Draft widgets onto the personal Close fork. Never overwrite org Close except via request_publish_org.",
+  "config": { "sandbox": { "enabled": true } },
   "mcpServers": [
     {
       "name": "donecorner",

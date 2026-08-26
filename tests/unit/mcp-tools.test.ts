@@ -118,4 +118,36 @@ describe("MCP tools", () => {
     expect(result.storedPath).toContain("pnl.csv");
     expect(result.instruction).toMatch(/source=upload/);
   });
+
+  it("runs a sandbox cleaner and loads upload rows into the cube", async () => {
+    process.env.TRUEFORGE_SANDBOX = "1";
+    process.env.DONECORNER_UPLOADS = join(
+      mkdtempSync(join(tmpdir(), "dc-up2-")),
+      "u",
+    );
+    const db = freshDb();
+    const csv = [
+      "period,entity,function,account,amount,currency,scenario,source",
+      "2026-01,northstar,other,subscription,100,USD,actual,upload",
+    ].join("\n");
+    const result = (await callTool(db, "upload_close_file", {
+      filename: "facts_pnl.csv",
+      bytes: Buffer.from(csv).toString("base64"),
+    })) as {
+      ranIn: string;
+      rowsLoaded: number;
+      analysis: { pnl: { metric: string } } | null;
+    };
+    expect(result.ranIn).toBe("child");
+    expect(result.rowsLoaded).toBe(1);
+    expect(result.analysis?.pnl.metric).toBe("revenue");
+    const cube = (await callTool(db, "query_cube", {
+      metric: "revenue",
+      grain: "period",
+      filters: { scenario: "actual" },
+    })) as { rows: { key: string; value: number }[] };
+    expect(cube.rows.some((r) => r.key === "2026-01" && r.value === 100)).toBe(
+      true,
+    );
+  });
 });

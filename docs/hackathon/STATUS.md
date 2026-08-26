@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 4 — Catch-up PR + Qodo High fixes
+**Phase:** 3/4 — Sandbox ingest + subagents + evidence
 
-**Current step:** [PR 6](https://github.com/ss-pratapIIITB/DoneCornerAI/pull/6) lands the portal slice that missed `main` and the six cube bugs. Next: TrueForge sandbox ingest, Field Report, Radio Traffic.
+**Current step:** `feat/sandbox-ingest` — Qodo PR 7 findings (CSV parser, USD, atomic replace).
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -30,7 +30,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 - [ ] TrueForge local harness + model + sandbox
 - [x] Data plane (sample finance pack + MCP)
-- [ ] Agent: ingest → sandbox analysis → insights (subagents)
+- [x] Agent: ingest → sandbox analysis → insights (subagents)
 - [x] Portal shell: view default, edit toggle
 - [x] Default dashboard + custom dashboards
 - [x] Navigable charts (click filter, drill down/up)
@@ -45,7 +45,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [ ] Every substantive change via PR; High findings fixed or dismissed with reason
 - [x] README: runbook + `## Qodo Code Review Evidence`
 - [x] ~3 min demo script (tool + sandbox + approval visible)
-- [ ] Field Report draft
+- [x] Field Report draft
 - [ ] Radio Traffic posts (tag WeMakeDevs, TrueFoundry, Qodo)
 - [ ] Star TrueForge (Calling Card draw)
 
@@ -69,6 +69,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-26 | Layout A: nav + board | User picked recommended |
 | 2026-08-26 | View/Edit: same board, mode bar | User picked recommended; keep taking recommended for a while |
 | 2026-08-26 | Sample pack may load without sandbox; uploads require sandbox | Judges can run if Daytona is missing |
+| 2026-08-26 | Upload ingest is CSV + USD only; Excel is 4xx | Silent xlsx→0 rows was worse than dropping Excel for the demo |
 
 ## Open questions
 
