@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Sandbox ingest + subagents + evidence
 
-**Current step:** `feat/sandbox-ingest` — child-process cleaner, P&L/Cash/Growth slices, Field Report. PR 6 merged.
+**Current step:** `feat/sandbox-ingest` — Qodo PR 7 findings (CSV parser, USD, atomic replace).
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -69,6 +69,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-26 | Layout A: nav + board | User picked recommended |
 | 2026-08-26 | View/Edit: same board, mode bar | User picked recommended; keep taking recommended for a while |
 | 2026-08-26 | Sample pack may load without sandbox; uploads require sandbox | Judges can run if Daytona is missing |
+| 2026-08-26 | Upload ingest is CSV + USD only; Excel is 4xx | Silent xlsx→0 rows was worse than dropping Excel for the demo |
 
 ## Open questions
 

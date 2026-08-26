@@ -133,9 +133,14 @@ describe("MCP tools", () => {
     const result = (await callTool(db, "upload_close_file", {
       filename: "facts_pnl.csv",
       bytes: Buffer.from(csv).toString("base64"),
-    })) as { ranIn: string; rowsLoaded: number };
+    })) as {
+      ranIn: string;
+      rowsLoaded: number;
+      analysis: { pnl: { metric: string } } | null;
+    };
     expect(result.ranIn).toBe("child");
     expect(result.rowsLoaded).toBe(1);
+    expect(result.analysis?.pnl.metric).toBe("revenue");
     const cube = (await callTool(db, "query_cube", {
       metric: "revenue",
       grain: "period",

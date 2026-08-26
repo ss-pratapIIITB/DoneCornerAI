@@ -1,9 +1,7 @@
 import { jsonError, userFromRequest } from "@/lib/api/http";
 import { ForbiddenError } from "@/lib/identity/errors";
 import { getDb, migrate } from "@/lib/db/sqlite";
-import { uploadCloseFile } from "@/lib/pack/parse-upload";
-import { runSandboxClean } from "@/lib/pack/sandbox-clean";
-import { runCloseSubagents } from "@/lib/analysis/subagents";
+import { ingestCloseUpload } from "@/lib/pack/ingest";
 
 export const runtime = "nodejs";
 
@@ -17,14 +15,11 @@ export async function POST(req: Request): Promise<Response> {
     }
     const db = getDb();
     migrate(db);
-    const stored = uploadCloseFile({
+    const result = await ingestCloseUpload(db, {
       filename: body.filename,
       bytes: body.bytes,
     });
-    const cleaned = await runSandboxClean(db, stored.storedPath);
-    const analysis =
-      cleaned.rowsLoaded > 0 ? await runCloseSubagents(db) : null;
-    return Response.json({ ...stored, ...cleaned, analysis });
+    return Response.json(result);
   } catch (err) {
     return jsonError(err);
   }

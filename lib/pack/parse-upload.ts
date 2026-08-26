@@ -14,6 +14,11 @@ export function uploadCloseFile(input: {
       "Uploads require the TrueForge sandbox (TRUEFORGE_SANDBOX=1). Load the sample pack instead.",
     );
   }
+  if (/\.xlsx?$/i.test(input.filename)) {
+    throw new Error(
+      "Excel uploads are not supported. Export a CSV with the Northstar fact headers.",
+    );
+  }
   const safe = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
   const dir = uploadsDir();
   mkdirSync(dir, { recursive: true });
@@ -22,6 +27,6 @@ export function uploadCloseFile(input: {
   return {
     storedPath,
     instruction:
-      "Normalize this CSV/Excel into facts_pnl, facts_cash, facts_arr, facts_headcount with source=upload. USD only. Do not overwrite sample rows.",
+      "Normalize this CSV into facts_pnl, facts_cash, facts_arr, facts_headcount with source=upload. USD only. Do not overwrite sample rows.",
   };
 }

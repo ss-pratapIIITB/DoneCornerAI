@@ -101,10 +101,10 @@ export function CloseCanvas() {
         </p>
       )}
       <label className="upload">
-        Drop a CSV/Excel close file
+        Drop a CSV close file
         <input
           type="file"
-          accept=".csv,.xlsx,.xls"
+          accept=".csv"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
@@ -139,7 +139,9 @@ export function CloseCanvas() {
                     : (body.instruction ?? "File stored."),
                 );
                 if (body.rowsLoaded) {
-                  await runCube(defaultQuery);
+                  const next = defaultQuery;
+                  setQuery(next);
+                  await runCube(next);
                 }
               });
             };

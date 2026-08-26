@@ -9,8 +9,7 @@ import {
 } from "@/lib/dashboards/store";
 import { requestPublishOrg } from "@/lib/dashboards/publish";
 import { loadSamplePack } from "@/lib/pack/load-sample";
-import { uploadCloseFile } from "@/lib/pack/parse-upload";
-import { runSandboxClean } from "@/lib/pack/sandbox-clean";
+import { ingestCloseUpload } from "@/lib/pack/ingest";
 
 export const TOOL_NAMES = [
   "load_sample_pack",
@@ -33,14 +32,11 @@ export async function callTool(
   switch (name as ToolName) {
     case "load_sample_pack":
       return loadSamplePack(db);
-    case "upload_close_file": {
-      const stored = uploadCloseFile({
+    case "upload_close_file":
+      return ingestCloseUpload(db, {
         filename: String(args.filename ?? "upload.csv"),
         bytes: String(args.bytes ?? ""),
       });
-      const cleaned = await runSandboxClean(db, stored.storedPath);
-      return { ...stored, ...cleaned };
-    }
     case "describe_schema":
       return describeSchema();
     case "query_cube":
