@@ -53,7 +53,7 @@ export function CloseCanvas() {
       if (body.analysis) {
         setAgent(
           "done",
-          `${body.analysis.pnl.name}, ${body.analysis.cash.name}, and ${body.analysis.growth.name} slices finished in parallel.`,
+          `${body.analysis.pnl.name}, ${body.analysis.cash.name}, and ${body.analysis.growth.name} slices finished.`,
         );
       }
     } catch (err) {

@@ -33,7 +33,7 @@ const CLEANER = [
   '  return rows.filter((r) => r.some((cell) => String(cell).trim() !== ""));',
   "}",
   "const records = parseCsv(text);",
-  "if (records.length < 2) {",
+  "if (records.length < 1) {",
   '  process.stdout.write(JSON.stringify({ table: null, rows: [] }));',
   "  process.exit(0);",
   "}",
@@ -52,6 +52,8 @@ const CLEANER = [
   "const expected = header.length;",
   "const src = header.indexOf(\"source\");",
   "const cur = header.indexOf(\"currency\");",
+  "const numericCols = { facts_pnl: [4], facts_cash: [2, 3, 4], facts_arr: [2, 3, 4, 5, 6, 7], facts_headcount: [3] };",
+  "const scenarioCols = { facts_pnl: 6, facts_cash: 5, facts_headcount: 4 };",
   "const rows = [];",
   "for (const cols of records.slice(1)) {",
   "  if (cols.length !== expected) {",
@@ -59,6 +61,20 @@ const CLEANER = [
   "    process.exit(1);",
   "  }",
   "  if (cur >= 0 && String(cols[cur]).trim().toUpperCase() !== \"USD\") continue;",
+  "  for (const i of numericCols[table] ?? []) {",
+  "    if (!Number.isFinite(Number(String(cols[i]).trim())) || String(cols[i]).trim() === \"\") {",
+  '      process.stderr.write("CSV row has a non-numeric value");',
+  "      process.exit(1);",
+  "    }",
+  "  }",
+  "  const scenarioIdx = scenarioCols[table];",
+  "  if (scenarioIdx != null) {",
+  "    const scenario = String(cols[scenarioIdx]).trim();",
+  "    if (scenario !== \"actual\" && scenario !== \"budget\" && scenario !== \"forecast\") {",
+  '      process.stderr.write("CSV row has an invalid scenario");',
+  "      process.exit(1);",
+  "    }",
+  "  }",
   '  if (src >= 0) cols[src] = "upload";',
   "  rows.push(cols);",
   "}",
@@ -109,7 +125,7 @@ function runChild(scriptPath: string, csvPath: string): Promise<string> {
 
 function insertRows(db: DatabaseSync, table: string, rows: string[][]): number {
   const insertSql = INSERT_SQL[table];
-  if (!insertSql || rows.length === 0) return 0;
+  if (!insertSql) return 0;
   const placeholders = insertSql.split("?").length - 1;
   const insert = db.prepare(insertSql);
   db.exec("BEGIN");
@@ -139,9 +155,8 @@ export async function runSandboxClean(
   writeFileSync(scriptPath, CLEANER);
   const raw = await runChild(scriptPath, csvPath);
   const parsed = JSON.parse(raw) as { table: string | null; rows: string[][] };
-  const rowsLoaded =
-    parsed.table && parsed.rows.length
-      ? insertRows(db, parsed.table, parsed.rows)
-      : 0;
+  const rowsLoaded = parsed.table
+    ? insertRows(db, parsed.table, parsed.rows)
+    : 0;
   return { ranIn: "child", rowsLoaded, table: parsed.table };
 }

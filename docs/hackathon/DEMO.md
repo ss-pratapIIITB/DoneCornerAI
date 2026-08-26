@@ -19,7 +19,7 @@ Register the `donecorner` MCP server (stdio JSON-RPC in `mcp/server.ts`) and the
 ## Script
 
 1. Open the portal. It is in **View**. No drag handles. Query bar is disabled if TrueForge is down; the cube still works.
-2. Click **Load sample pack**. A revenue chart appears. The agent rail shows P&L, Cash, and Growth slices finished in parallel.
+2. Click **Load sample pack**. A revenue chart appears. The agent rail shows P&L, Cash, and Growth slices finished.
 3. Click a period (or a drill key). Grain steps to **function**. Click **Up**. Optional: drop a `facts_pnl.csv` with `TRUEFORGE_SANDBOX=1` — a child-process cleaner loads `source=upload` rows.
 4. Open **Schema**. Switch to **Edit** (auto-forks a personal board). Add **revenue as KPI**. Return to Close and write a note.
 5. Ask: “Why is S&M over budget?” The agent rail shows **Running**, then an explanation. Optional chart/widget on the personal board.

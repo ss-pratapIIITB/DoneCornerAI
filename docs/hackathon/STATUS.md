@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Sandbox ingest + subagents + evidence
 
-**Current step:** `feat/sandbox-ingest` — Qodo PR 7 findings (CSV parser, USD, atomic replace).
+**Current step:** `feat/qodo-pr7-followup` — remaining Qodo High on ingest (empty replace, numeric reject). PR 7 merged.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 

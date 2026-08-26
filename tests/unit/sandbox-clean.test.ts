@@ -60,6 +60,57 @@ describe("sandbox cleaner", () => {
     );
   });
 
+  it("clears the prior upload when a recognized file has no USD rows", async () => {
+    const db = freshDb();
+    const good = [
+      PNL_HEADER,
+      "2026-01,northstar,other,subscription,100,USD,actual,upload",
+    ].join("\n");
+    await upload(db, "facts_pnl.csv", good);
+
+    const eurOnly = [
+      PNL_HEADER,
+      "2026-02,northstar,other,subscription,50,EUR,actual,upload",
+    ].join("\n");
+    const result = (await upload(db, "facts_pnl.csv", eurOnly)) as {
+      rowsLoaded: number;
+      table: string | null;
+    };
+    expect(result.table).toBe("facts_pnl");
+    expect(result.rowsLoaded).toBe(0);
+
+    const cube = (await callTool(db, "query_cube", {
+      metric: "revenue",
+      grain: "period",
+      filters: { scenario: "actual" },
+    })) as { rows: { value: number }[] };
+    expect(cube.rows.reduce((s, r) => s + r.value, 0)).toBe(0);
+  });
+
+  it("rejects non-numeric amounts and keeps the prior upload", async () => {
+    const db = freshDb();
+    const good = [
+      PNL_HEADER,
+      "2026-01,northstar,other,subscription,100,USD,actual,upload",
+    ].join("\n");
+    await upload(db, "facts_pnl.csv", good);
+
+    const bad = [
+      PNL_HEADER,
+      "2026-02,northstar,other,subscription,abc,USD,actual,upload",
+    ].join("\n");
+    await expect(upload(db, "facts_pnl.csv", bad)).rejects.toThrow();
+
+    const cube = (await callTool(db, "query_cube", {
+      metric: "revenue",
+      grain: "period",
+      filters: { scenario: "actual" },
+    })) as { rows: { key: string; value: number }[] };
+    expect(cube.rows.some((r) => r.key === "2026-01" && r.value === 100)).toBe(
+      true,
+    );
+  });
+
   it("does not load non-USD amounts as USD", async () => {
     const db = freshDb();
     const csv = [
