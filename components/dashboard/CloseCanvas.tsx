@@ -1,8 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { NavigableChart } from "@/components/dashboard/NavigableChart";
 import { usePortalMode } from "@/components/shell/AppShell";
+import type { CubeQuery, CubeRow } from "@/lib/cube/query";
 import type { Dashboard } from "@/lib/dashboards/store";
+
+const defaultQuery: CubeQuery = {
+  metric: "revenue",
+  grain: "period",
+  filters: { scenario: "actual" },
+};
 
 export function CloseCanvas() {
   const mode = usePortalMode();
@@ -10,10 +18,23 @@ export function CloseCanvas() {
   const [periods, setPeriods] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState<CubeQuery>(defaultQuery);
+  const [rows, setRows] = useState<CubeRow[]>([]);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/dashboards?id=org-close");
     if (res.ok) setDashboard((await res.json()) as Dashboard);
+  }, []);
+
+  const runCube = useCallback(async (q: CubeQuery) => {
+    const res = await fetch("/api/cube", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(q),
+    });
+    if (!res.ok) return;
+    const body = (await res.json()) as { rows: CubeRow[] };
+    setRows(body.rows);
   }, []);
 
   useEffect(() => {
@@ -29,6 +50,9 @@ export function CloseCanvas() {
       const body = (await res.json()) as { periods: number };
       setPeriods(body.periods);
       await refresh();
+      const next = defaultQuery;
+      setQuery(next);
+      await runCube(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Load failed");
     } finally {
@@ -46,21 +70,34 @@ export function CloseCanvas() {
       </div>
       {error ? <p className="error">{error}</p> : null}
       {periods != null ? <p>{periods} periods in the cube.</p> : null}
+      {rows.length ? (
+        <NavigableChart
+          query={query}
+          rows={rows}
+          onQueryChange={(q) => {
+            setQuery(q);
+            void runCube(q);
+          }}
+        />
+      ) : (
+        <p className="empty">
+          No widgets on the org board yet. Load the sample pack to open a navigable
+          revenue chart. Click a bar to drill; use Up to go back.
+        </p>
+      )}
       {dashboard?.widgets.length ? (
         <ul>
           {dashboard.widgets.map((w) => (
-            <li key={w.id} {...(mode === "edit" ? { "data-draggable": "true" } : {})}>
+            <li
+              key={w.id}
+              {...(mode === "edit" ? { "data-draggable": "true" } : {})}
+            >
               <strong>{w.title}</strong>
               {w.note ? <span> — {w.note}</span> : null}
             </li>
           ))}
         </ul>
-      ) : (
-        <p className="empty">
-          No widgets on the org board yet. Load the pack, then ask the agent to draft
-          Close, or switch to Edit to fork a personal board.
-        </p>
-      )}
+      ) : null}
     </section>
   );
 }

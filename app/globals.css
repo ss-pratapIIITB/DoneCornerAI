@@ -185,10 +185,53 @@ body {
   background: var(--panel);
 }
 
-.agent-rail h2 {
-  margin: 0 0 0.5rem;
-  font-size: 0.95rem;
+.chart-block {
+  margin: 1.25rem 0 2rem;
 }
+
+.breadcrumbs {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+}
+
+.breadcrumbs button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--gold);
+  border: 0;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.chart-frame {
+  background: #10141a;
+  border: 1px solid var(--line);
+  padding: 0.75rem 0.5rem 0.25rem;
+}
+
+.drill-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.drill-keys button {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+}
+
+
 
 @media (max-width: 900px) {
   .app-shell {
