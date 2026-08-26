@@ -10,7 +10,7 @@ A CFO close is not a chat. Files have to become a cube, charts have to drill wit
 
 - **Portal:** Next.js App Router, SQLite cube, Recharts. Click-to-drill is `queryCube` only.
 - **Harness:** `@truefoundry/trueforge-sdk` against `http://localhost:8790`. Session id in `localStorage` (`donecorner.tf.session`).
-- **MCP:** in-process tools in `mcp/tools.ts` (`load_sample_pack`, `upload_close_file`, `query_cube`, `request_publish_org`, …). `request_publish_org` is the approval-gated tool.
+- **MCP:** HTTP JSON-RPC at `/api/mcp`. On session create the portal registers TrueForge connector `donecorner` and agent `close-pack`. Tools: `load_sample_pack`, `upload_close_file`, `query_cube`, `request_publish_org`, … `request_publish_org` is the approval-gated tool.
 - **Sandbox:** uploads require `TRUEFORGE_SANDBOX=1`. A generated Node cleaner runs in a **child process**, then rows land as `source=upload` inside a transaction. Non-USD rows are skipped; Excel filenames return 4xx. Sample pack load stays deterministic without Daytona.
 - **Subagents:** after ingest (HTTP and MCP), P&L / Cash / Growth slices start together (`lib/analysis/subagents.ts`). SQLite queries are synchronous, so they complete on one thread.
 - **Approval:** Edit forks a personal board. Publish is pending until an editor (not a viewer) approves or denies.

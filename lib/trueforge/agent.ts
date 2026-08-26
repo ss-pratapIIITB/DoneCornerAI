@@ -13,7 +13,10 @@ export function closePackSpec(modelName: string): TrueForge.AgentSpec {
   return {
     model: { name: modelName },
     instructions: CLOSE_PACK_INSTRUCTIONS,
-    config: { sandbox: { enabled: true } },
+    config: {
+      sandbox: { enabled: true },
+      dynamicSubAgents: { enabled: true },
+    },
     mcpServers: [
       {
         name: "donecorner",

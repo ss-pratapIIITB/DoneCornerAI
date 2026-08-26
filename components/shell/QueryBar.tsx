@@ -30,7 +30,7 @@ export function QueryBar({ disabled, reason, onSubmit }: Props) {
             : "Ask why S&M is over budget…"
         }
       />
-      <button type="submit" disabled={disabled}>
+      <button type="submit" className="ask-submit" disabled={disabled}>
         Ask
       </button>
     </form>

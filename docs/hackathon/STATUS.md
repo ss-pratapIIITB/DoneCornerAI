@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 3/4 — Sandbox ingest + subagents + evidence
+**Phase:** 3/4 — TrueForge harness + Operate UI (product slice complete; evidence still open)
 
-**Current step:** `feat/qodo-pr7-followup` — remaining Qodo High on ingest (empty replace, numeric reject). PR 7 merged.
+**Current step:** `feat/product-finish` — HTTP MCP + harness register + Operate polish; browser-verified on :3001.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -28,7 +28,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Phase 3 — Build (demo-first vertical slice)
 
-- [ ] TrueForge local harness + model + sandbox
+- [x] TrueForge local harness + model + sandbox
 - [x] Data plane (sample finance pack + MCP)
 - [x] Agent: ingest → sandbox analysis → insights (subagents)
 - [x] Portal shell: view default, edit toggle
@@ -37,7 +37,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [x] On-the-fly query → explanation / chart
 - [x] Approval gate on publish / sensitive export
 - [x] Persistent session survives refresh
-- [ ] Impeccable Operate UI pass + browser verify
+- [x] Impeccable Operate UI pass + browser verify
 
 ## Phase 4 — Hackathon evidence
 

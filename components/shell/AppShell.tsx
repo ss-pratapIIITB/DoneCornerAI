@@ -59,6 +59,9 @@ export function AppShell({ children }: Props) {
     "Connect TrueForge to ask follow-ups.",
   );
   const [tfSession, setTfSession] = useState<string | null>(null);
+  const [pendingTf, setPendingTf] = useState<
+    { threadId: string; toolCallId: string; name?: string }[]
+  >([]);
 
   const setAgent = useCallback((status: AgentStatus, detail: string) => {
     setAgentStatus(status);
@@ -146,6 +149,21 @@ export function AppShell({ children }: Props) {
   }, [board, enterEdit, setAgent]);
 
   async function resolveRail(decision: "approved" | "denied") {
+    if (tfSession && pendingTf.length) {
+      await fetch("/api/session/approve", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionId: tfSession,
+          approvals: pendingTf.map((p) => ({
+            threadId: p.threadId,
+            toolCallId: p.toolCallId,
+            allow: decision === "approved",
+          })),
+        }),
+      });
+      setPendingTf([]);
+    }
     if (publishId) {
       await fetch("/api/dashboards/publish", {
         method: "POST",
@@ -192,7 +210,13 @@ export function AppShell({ children }: Props) {
     const result = (await turn.json()) as {
       status: AgentStatus;
       output: string;
+      pendingApprovals?: {
+        threadId: string;
+        toolCallId: string;
+        name?: string;
+      }[];
     };
+    setPendingTf(result.pendingApprovals ?? []);
     setAgent(
       result.status === "waiting_approval" ? "waiting_approval" : result.status,
       result.output || "Turn finished.",

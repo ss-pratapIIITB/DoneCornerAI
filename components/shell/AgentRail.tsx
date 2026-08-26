@@ -20,8 +20,12 @@ const labels: Record<AgentStatus, string> = {
 export function AgentRail({ status, detail, onApprove, onDeny }: Props) {
   return (
     <aside className="agent-rail" aria-live="polite">
-      <h2>Agent</h2>
-      <p data-agent-status={status}>{labels[status]}</p>
+      <div className="agent-rail-head">
+        <h2>Agent</h2>
+        <p className="agent-status" data-agent-status={status}>
+          {labels[status]}
+        </p>
+      </div>
       <p className="agent-detail">{detail}</p>
       {status === "waiting_approval" ? (
         <div className="approval-actions">
