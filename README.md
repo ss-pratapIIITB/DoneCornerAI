@@ -1,6 +1,6 @@
-# Office of the CTO
+# DoneCornerAI
 
-CFO intelligence portal for the [Agent Harness Hackathon](https://www.wemakedevs.org/hackathons/trueforge) (24–30 August 2026).
+Public repo for the CFO intelligence portal (working name: Office of the CTO) in the [Agent Harness Hackathon](https://www.wemakedevs.org/hackathons/trueforge) (24–30 August 2026).
 
 The product is a **close-pack agent**: drop P&L / cash / budget files (or load the shipped sample pack), TrueForge cleans them in a sandbox, and the portal opens a navigable dashboard. Default mode is **view**. Edit, personal dashboards, click-to-drill charts, and on-the-fly queries come next. Publishing the org Close dashboard is the human approval gate.
 
