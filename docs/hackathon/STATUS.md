@@ -6,18 +6,18 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 1 — Brainstorm (design, no product code)
+**Phase:** 1 — Brainstorm (spec written, waiting on user review)
 
-**Current step:** Design sections (portal UX) — visual companion offer
+**Current step:** User reviews `docs/superpowers/specs/2026-08-26-close-pack-portal-design.md`
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
 - [x] Explore project context (empty repo; hackathon brief; TrueForge docs)
 - [x] Clarifying questions (one at a time) — core product locked; more only if a hole appears
 - [x] 2–3 approaches with trade-offs + recommendation — portal + TrueForge SDK
-- [ ] Design sections, approval after each (architecture, data, agent done; UX next)
-- [ ] Spec written to `docs/superpowers/specs/`
-- [ ] Spec self-review
+- [x] Design sections — remaining UX took recommended defaults (layout A, same-board edit)
+- [x] Spec written to `docs/superpowers/specs/2026-08-26-close-pack-portal-design.md`
+- [x] Spec self-review (no TBD; one job; publish is the only approval)
 - [ ] User reviews spec
 
 ## Phase 2 — Plan (`writing-plans`)
@@ -66,7 +66,10 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-26 | Architecture section approved | Cube clicks skip the LLM; publish is the approval |
 | 2026-08-26 | Data: full SaaS CFO catalog; generate Northstar Close Pack | Public files are reference-only unless they score well |
 | 2026-08-26 | Agent/MCP approved | Plus schema/metadata explorer and ad-hoc charts or annotations |
+| 2026-08-26 | Layout A: nav + board | User picked recommended |
+| 2026-08-26 | View/Edit: same board, mode bar | User picked recommended; keep taking recommended for a while |
+| 2026-08-26 | Sample pack may load without sandbox; uploads require sandbox | Judges can run if Daytona is missing |
 
 ## Open questions
 
-1. Visual companion for portal UX mockups (offering now)
+1. User review of the spec (blocking). Then writing-plans.
