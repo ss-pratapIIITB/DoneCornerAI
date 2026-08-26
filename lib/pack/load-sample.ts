@@ -16,37 +16,44 @@ function parseCsv(text: string): string[][] {
 }
 
 export function loadSamplePack(db: DatabaseSync): { periods: number } {
-  db.exec("DELETE FROM facts_pnl WHERE source = 'sample'");
-  db.exec("DELETE FROM facts_cash WHERE source = 'sample'");
-  db.exec("DELETE FROM facts_arr WHERE source = 'sample'");
-  db.exec("DELETE FROM facts_headcount WHERE source = 'sample'");
-
-  const insertPnl = db.prepare(
-    "INSERT INTO facts_pnl (period, entity, function, account, amount, currency, scenario, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  const pnl = parseCsv(readFileSync(join(packDir(), "facts_pnl.csv"), "utf8"));
+  const cash = parseCsv(readFileSync(join(packDir(), "facts_cash.csv"), "utf8"));
+  const arr = parseCsv(readFileSync(join(packDir(), "facts_arr.csv"), "utf8"));
+  const headcount = parseCsv(
+    readFileSync(join(packDir(), "facts_headcount.csv"), "utf8"),
   );
-  for (const row of parseCsv(readFileSync(join(packDir(), "facts_pnl.csv"), "utf8"))) {
-    insertPnl.run(...row);
-  }
 
-  const insertCash = db.prepare(
-    "INSERT INTO facts_cash (period, entity, cash_in, cash_out, ending_balance, scenario, source) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  );
-  for (const row of parseCsv(readFileSync(join(packDir(), "facts_cash.csv"), "utf8"))) {
-    insertCash.run(...row);
-  }
+  db.exec("BEGIN");
+  try {
+    db.exec("DELETE FROM facts_pnl WHERE source = 'sample'");
+    db.exec("DELETE FROM facts_cash WHERE source = 'sample'");
+    db.exec("DELETE FROM facts_arr WHERE source = 'sample'");
+    db.exec("DELETE FROM facts_headcount WHERE source = 'sample'");
 
-  const insertArr = db.prepare(
-    "INSERT INTO facts_arr (period, entity, beginning_arr, new, expansion, contraction, churn, ending_arr, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  for (const row of parseCsv(readFileSync(join(packDir(), "facts_arr.csv"), "utf8"))) {
-    insertArr.run(...row);
-  }
+    const insertPnl = db.prepare(
+      "INSERT INTO facts_pnl (period, entity, function, account, amount, currency, scenario, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    for (const row of pnl) insertPnl.run(...row);
 
-  const insertHc = db.prepare(
-    "INSERT INTO facts_headcount (period, entity, function, fte, scenario, source) VALUES (?, ?, ?, ?, ?, ?)",
-  );
-  for (const row of parseCsv(readFileSync(join(packDir(), "facts_headcount.csv"), "utf8"))) {
-    insertHc.run(...row);
+    const insertCash = db.prepare(
+      "INSERT INTO facts_cash (period, entity, cash_in, cash_out, ending_balance, scenario, source) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    );
+    for (const row of cash) insertCash.run(...row);
+
+    const insertArr = db.prepare(
+      "INSERT INTO facts_arr (period, entity, beginning_arr, new, expansion, contraction, churn, ending_arr, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    for (const row of arr) insertArr.run(...row);
+
+    const insertHc = db.prepare(
+      "INSERT INTO facts_headcount (period, entity, function, fte, scenario, source) VALUES (?, ?, ?, ?, ?, ?)",
+    );
+    for (const row of headcount) insertHc.run(...row);
+
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
   }
 
   const periods = db

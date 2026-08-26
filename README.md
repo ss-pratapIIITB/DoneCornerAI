@@ -47,5 +47,5 @@ Substantive work goes through pull requests. Do not push application changes str
 Qodo is required on every substantive PR.
 
 - Representative PR: https://github.com/ss-pratapIIITB/DoneCornerAI/pull/5
-- What Qodo surfaced: _awaiting GitHub App on this repo_
-- What we changed or dismissed: _pending_
+- What Qodo surfaced: six cube bugs (ARR `scenario` column, gross margin as dollars, runway as burn, unimplemented metrics falling through to P&L sums, cash/ARR drill grains, non-transactional sample reload)
+- What we changed or dismissed: all six addressed in a follow-up PR — table-aware filters, derived metrics, period-only cash/ARR grains, and a transactional sample load. Nothing dismissed.

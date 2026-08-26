@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 2 — Plan executing on `feat/close-pack` (PR 5)
+**Phase:** 4 — Qodo High findings follow-up
 
-**Current step:** Tasks 1–11 implemented. Remaining: Qodo on the PR, Field Report, Radio Traffic.
+**Current step:** `fix/qodo-cube-metrics` — six cube bugs from PR 5. Then TrueForge sandbox ingest, Field Report, Radio Traffic.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -41,7 +41,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Phase 4 — Hackathon evidence
 
-- [ ] Qodo installed on the repo
+- [x] Qodo installed on the repo
 - [ ] Every substantive change via PR; High findings fixed or dismissed with reason
 - [x] README: runbook + `## Qodo Code Review Evidence`
 - [x] ~3 min demo script (tool + sandbox + approval visible)
