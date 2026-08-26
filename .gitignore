@@ -25,3 +25,6 @@ coverage/
 
 # Visual brainstorm companion (session mockups)
 .superpowers/
+
+# Local agent skills (installed on this machine; not published)
+.cursor/skills/

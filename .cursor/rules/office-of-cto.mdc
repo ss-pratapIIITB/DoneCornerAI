@@ -1,0 +1,16 @@
+---
+description: OfficeOfCTO hackathon process — always follow AGENTS.md and the living checklist
+alwaysApply: true
+---
+
+# OfficeOfCTO
+
+Read `AGENTS.md` and `docs/hackathon/STATUS.md` at the start of every session. Update STATUS when a step changes.
+
+- Backend / new behavior: Superpowers. Brainstorm → spec → plan → TDD. No product code during brainstorm.
+- Frontend: Impeccable (`.cursor/skills/impeccable`). Operate mode. Browser-verify flows, not only screenshots.
+- TrueForge must act: MCP, sandbox, human approval, subagents, persistent sessions.
+- Portal opens in **view** mode. Edit is explicit.
+- Charts: click to filter / drill; breadcrumbs to go up. Query bar for on-the-fly insight.
+- Substantive work goes through a Qodo-reviewed PR. Do not push straight to main.
+- Prefer one finished vertical slice over a half-built platform.
