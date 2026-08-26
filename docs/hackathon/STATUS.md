@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 1 — Brainstorm (spec written, waiting on user review)
+**Phase:** 2 — Plan approved; executing Task 1 (scaffold)
 
-**Current step:** User reviews `docs/superpowers/specs/2026-08-26-close-pack-portal-design.md`
+**Current step:** Build `feat/close-pack` — Next.js + Vitest scaffold
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -18,13 +18,13 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [x] Design sections — remaining UX took recommended defaults (layout A, same-board edit)
 - [x] Spec written to `docs/superpowers/specs/2026-08-26-close-pack-portal-design.md`
 - [x] Spec self-review (no TBD; one job; publish is the only approval)
-- [ ] User reviews spec
+- [x] User reviews spec
 
 ## Phase 2 — Plan (`writing-plans`)
 
-- [ ] Implementation plan in `docs/superpowers/plans/`
-- [ ] File map + bite-sized TDD tasks
-- [ ] User approves plan
+- [x] Implementation plan in `docs/superpowers/plans/`
+- [x] File map + bite-sized TDD tasks
+- [x] User approves plan
 
 ## Phase 3 — Build (demo-first vertical slice)
 
@@ -72,4 +72,4 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Open questions
 
-1. User review of the spec (blocking). Then writing-plans.
+None blocking. Executing the plan.

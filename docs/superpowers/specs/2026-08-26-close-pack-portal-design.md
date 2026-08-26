@@ -2,7 +2,7 @@
 
 Date: 2026-08-26  
 Repo: [ss-pratapIIITB/DoneCornerAI](https://github.com/ss-pratapIIITB/DoneCornerAI)  
-Status: ready for user review  
+Status: approved  
 Hackathon: Agent Harness Hackathon, due 30 Aug 2026 20:00 London
 
 ## 1. One job
