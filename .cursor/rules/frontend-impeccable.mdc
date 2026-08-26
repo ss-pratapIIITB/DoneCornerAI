@@ -1,0 +1,14 @@
+---
+description: Impeccable Operate UI for the CFO portal
+globs: "**/*.{tsx,css,scss}"
+alwaysApply: false
+---
+
+# Frontend
+
+1. Follow `.cursor/skills/impeccable/SKILL.md`. This surface is **Operate**.
+2. Load craft-floor before editing UI. No timid default dashboards.
+3. View vs edit must be obvious. Default view. Edit does not look like view with extra buttons only.
+4. Agent state is first-class: running, waiting for approval, done — not a hidden chat log.
+5. Charts are the navigation. Click-to-filter and drill must feel native.
+6. Verify in the browser: view, edit, drill, query, approval. Appearance-only checks are not enough.
