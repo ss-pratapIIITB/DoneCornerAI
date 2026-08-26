@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 2 — Plan executing on `feat/close-pack` (PR 5)
 
-**Current step:** Tasks 1–9 done. Remaining: TrueForge MCP + approval rail, README/demo.
+**Current step:** Tasks 1–11 implemented. Remaining: Qodo on the PR, Field Report, Radio Traffic.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -29,22 +29,22 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 ## Phase 3 — Build (demo-first vertical slice)
 
 - [ ] TrueForge local harness + model + sandbox
-- [ ] Data plane (sample finance pack + MCP)
+- [x] Data plane (sample finance pack + MCP)
 - [ ] Agent: ingest → sandbox analysis → insights (subagents)
 - [x] Portal shell: view default, edit toggle
 - [x] Default dashboard + custom dashboards
 - [x] Navigable charts (click filter, drill down/up)
-- [ ] On-the-fly query → explanation / chart
-- [ ] Approval gate on publish / sensitive export
-- [ ] Persistent session survives refresh
+- [x] On-the-fly query → explanation / chart
+- [x] Approval gate on publish / sensitive export
+- [x] Persistent session survives refresh
 - [ ] Impeccable Operate UI pass + browser verify
 
 ## Phase 4 — Hackathon evidence
 
 - [ ] Qodo installed on the repo
 - [ ] Every substantive change via PR; High findings fixed or dismissed with reason
-- [ ] README: runbook + `## Qodo Code Review Evidence`
-- [ ] ~3 min demo script (tool + sandbox + approval visible)
+- [x] README: runbook + `## Qodo Code Review Evidence`
+- [x] ~3 min demo script (tool + sandbox + approval visible)
 - [ ] Field Report draft
 - [ ] Radio Traffic posts (tag WeMakeDevs, TrueFoundry, Qodo)
 - [ ] Star TrueForge (Calling Card draw)
