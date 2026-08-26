@@ -29,3 +29,8 @@ coverage/
 
 # Local agent skills (installed on this machine; not published)
 .cursor/skills/
+
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

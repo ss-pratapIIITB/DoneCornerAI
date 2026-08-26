@@ -1,5 +1,11 @@
+import { IBM_Plex_Sans } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
+
+const sans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
 
 export const metadata: Metadata = {
   title: "DoneCornerAI",
@@ -11,7 +17,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={sans.className}>{children}</body>
     </html>
   );
 }
