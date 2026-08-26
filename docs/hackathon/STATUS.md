@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 2 — Plan executing on `feat/close-pack` (PR 5)
 
-**Current step:** Tasks 1–8 done (navigable charts verified). Remaining: schema notes, TrueForge MCP, README polish.
+**Current step:** Tasks 1–9 done. Remaining: TrueForge MCP + approval rail, README/demo.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 

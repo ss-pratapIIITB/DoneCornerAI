@@ -32,4 +32,20 @@ describe("PUT /api/dashboards", () => {
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("forks for an editor and forbids viewer POST", async () => {
+    const { POST } = await import("@/app/api/dashboards/route");
+    const viewer = await POST(
+      new Request("http://localhost/api/dashboards", {
+        method: "POST",
+        headers: { "x-demo-user": "viewer" },
+      }),
+    );
+    expect(viewer.status).toBe(403);
+    const res = await POST(
+      new Request("http://localhost/api/dashboards", { method: "POST" }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ owner: "cfo", forkedFrom: "org-close" });
+  });
 });
