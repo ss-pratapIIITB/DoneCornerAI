@@ -308,6 +308,50 @@ body {
   width: 100%;
 }
 
+.approval-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.approval-actions p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.approval-actions button,
+.upload {
+  font: inherit;
+  color: var(--ink);
+  background: var(--gold);
+  border: 0;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+}
+
+.approval-actions button.deny {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.upload {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1.25rem;
+  background: transparent;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+}
+
+.upload input {
+  font: inherit;
+  color: var(--paper);
+}
+
 
 
 @media (max-width: 900px) {
