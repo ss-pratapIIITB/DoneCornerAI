@@ -39,4 +39,22 @@ describe("summarizeTurnEvents", () => {
     expect(summary.output).toBe("model failed");
     expect(summary.pendingApprovals).toEqual([]);
   });
+
+  it("extracts present_chart payloads from tool.response", () => {
+    const summary = summarizeTurnEvents([
+      {
+        type: "tool.response",
+        content:
+          '{"title":"S&M by period","query":{"metric":"sm","grain":"period","filters":{"scenario":"actual"}},"chart":{"title":"S&M by period","query":{"metric":"sm","grain":"period"}}}',
+      },
+      { type: "turn.done", state: { status: "done", output: { content: "S&M is over budget in Q1." } } },
+    ]);
+    expect(summary.output).toContain("over budget");
+    expect(summary.charts).toEqual([
+      {
+        title: "S&M by period",
+        query: { metric: "sm", grain: "period", filters: { scenario: "actual" } },
+      },
+    ]);
+  });
 });

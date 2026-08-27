@@ -48,5 +48,55 @@ export function migrate(db: DatabaseSync): void {
       personal_id TEXT,
       state TEXT
     );
+    CREATE TABLE IF NOT EXISTS agent_runs (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL,
+      current_stage TEXT NOT NULL DEFAULT '',
+      prompt_version_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS run_events (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL REFERENCES agent_runs(id),
+      sequence INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      stage TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      details_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE(run_id, sequence)
+    );
+    CREATE INDEX IF NOT EXISTS run_events_run_sequence
+      ON run_events(run_id, sequence);
+    CREATE INDEX IF NOT EXISTS agent_runs_session_created
+      ON agent_runs(session_id, created_at DESC);
+    CREATE TABLE IF NOT EXISTS file_artifacts (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      media_type TEXT NOT NULL,
+      bytes INTEGER NOT NULL,
+      sha256 TEXT NOT NULL,
+      status TEXT NOT NULL,
+      storage_key TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS mapping_proposals (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      artifact_id TEXT NOT NULL REFERENCES file_artifacts(id),
+      proposal_json TEXT NOT NULL,
+      proposal_hash TEXT NOT NULL,
+      status TEXT NOT NULL,
+      applied_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS mapping_proposals_artifact
+      ON mapping_proposals(artifact_id, created_at DESC);
   `);
 }

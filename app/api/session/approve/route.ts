@@ -17,6 +17,7 @@ export async function POST(req: Request): Promise<Response> {
         allow: boolean;
         reason?: string;
       }[];
+      runId?: string;
     };
     if (!body.sessionId || !body.approvals?.length) {
       return Response.json(
@@ -24,7 +25,11 @@ export async function POST(req: Request): Promise<Response> {
         { status: 400 },
       );
     }
-    const result = await runApprovalTurn(body.sessionId, body.approvals);
+    const result = await runApprovalTurn(
+      body.sessionId,
+      body.approvals,
+      body.runId,
+    );
     return Response.json(result);
   } catch (err) {
     return jsonError(err);

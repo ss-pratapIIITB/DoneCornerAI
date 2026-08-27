@@ -1,4 +1,17 @@
 import { TrueForgeError } from "@truefoundry/trueforge-sdk";
+import { getDb, migrate } from "@/lib/db/sqlite";
+import {
+  appendRunEvent,
+  createRun,
+  getRun,
+  listRunEvents,
+  updateRun,
+} from "@/lib/runs/ledger";
+import {
+  createNormalizationContext,
+  normalizeTrueForgeEvent,
+} from "@/lib/runs/normalize";
+import type { RunEvent, RunKind, RunStatus } from "@/lib/runs/types";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
 import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
 import { ensureHarness } from "@/lib/trueforge/harness";
@@ -57,6 +70,9 @@ export type TurnSummary = {
     toolCallId: string;
     name?: string;
   }[];
+  charts: { title: string; query: Record<string, unknown> }[];
+  runId?: string;
+  events?: RunEvent[];
 };
 
 function eventRecord(item: unknown): Record<string, unknown> {
@@ -78,6 +94,8 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
   let output = "";
   let status: TurnSummary["status"] = "done";
   const pendingApprovals: TurnSummary["pendingApprovals"] = [];
+  const charts: TurnSummary["charts"] = [];
+  const toolNames = new Map<string, string>();
   for (const item of events) {
     const event = eventRecord(item);
     const type = String(event.type ?? "");
@@ -85,6 +103,38 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
       const chunk = outputText(event.content ?? event);
       if (chunk && type === "model.message.delta") output += chunk;
       else if (chunk && type === "model.message" && !output) output = chunk;
+      const calls = (event.toolCalls ?? event.tool_calls ?? []) as {
+        id?: string;
+        function?: { name?: string };
+        toolInfo?: { name?: string };
+      }[];
+      for (const call of calls) {
+        if (call.id) {
+          toolNames.set(
+            call.id,
+            String(call.toolInfo?.name ?? call.function?.name ?? "tool"),
+          );
+        }
+      }
+    }
+    if (type === "tool.response" || type === "tool.result") {
+      const raw = outputText(event.content ?? event.text);
+      try {
+        const parsed = JSON.parse(raw) as {
+          chart?: { title?: string; query?: Record<string, unknown> };
+          title?: string;
+          query?: Record<string, unknown>;
+        };
+        const query = parsed.query ?? parsed.chart?.query;
+        if (query && typeof query === "object") {
+          charts.push({
+            title: String(parsed.chart?.title ?? parsed.title ?? "Chart"),
+            query,
+          });
+        }
+      } catch {
+        /* not a chart payload */
+      }
     }
     if (type === "tool.approval_required") {
       status = "waiting_approval";
@@ -98,7 +148,9 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
         pendingApprovals.push({
           threadId,
           toolCallId: String(call.toolCallId ?? call.id ?? ""),
-          name: call.toolInfo?.name,
+          name:
+            call.toolInfo?.name ??
+            toolNames.get(String(call.toolCallId ?? call.id ?? "")),
         });
       }
     }
@@ -112,10 +164,27 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
           threadId?: string;
           tool_calls?: { id?: string }[];
         }[];
+        requiredActions?: {
+          type?: string;
+          threadId?: string;
+          toolCalls?: { id?: string }[];
+        }[];
       } | undefined;
       const fromState = outputText(state?.output);
       if (fromState) output = fromState;
-      const actions = state?.required_actions ?? [];
+      const actions = [
+        ...(state?.requiredActions ?? []).map((action) => ({
+          type: action.type,
+          threadId: action.threadId,
+          tool_calls: action.toolCalls,
+        })),
+        ...(state?.required_actions ?? []),
+      ] as {
+        type?: string;
+        threadId?: string;
+        thread_id?: string;
+        tool_calls?: { id?: string }[];
+      }[];
       const needsApproval = actions.some((a) =>
         String(a.type ?? "").includes("approval"),
       );
@@ -129,6 +198,7 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
               pendingApprovals.push({
                 threadId,
                 toolCallId: String(call.id ?? ""),
+                name: toolNames.get(String(call.id ?? "")),
               });
             }
           }
@@ -140,18 +210,28 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
       }
     }
   }
-  return { status, output, pendingApprovals };
+  return { status, output, pendingApprovals, charts };
 }
 
 export async function runUserTurn(
   sessionId: string,
   message: string,
+  options: { runId?: string; kind?: RunKind; userId?: string } = {},
 ): Promise<TurnSummary> {
   const client = trueforge();
+  const db = getDb();
+  migrate(db);
+  const runId = ensureRun(db, sessionId, options);
+  appendRunEvent(db, runId, {
+    type: "user.message",
+    stage: "input",
+    summary: message,
+    details: { content: message },
+  });
   const stream = await client.sessions.createTurnStream(sessionId, {
     input: [{ type: "user.message", content: message }],
   });
-  return collectTurn(stream);
+  return collectTurn(stream, runId);
 }
 
 export async function runApprovalTurn(
@@ -162,8 +242,20 @@ export async function runApprovalTurn(
     allow: boolean;
     reason?: string;
   }[],
+  runId?: string,
 ): Promise<TurnSummary> {
   const client = trueforge();
+  const db = getDb();
+  migrate(db);
+  const activeRunId = ensureRun(db, sessionId, {
+    runId,
+    kind: "question",
+    userId: "cfo",
+  });
+  updateRun(db, activeRunId, {
+    status: "running",
+    currentStage: "approval",
+  });
   const stream = await client.sessions.createTurnStream(sessionId, {
     input: approvals.map((a) => ({
       type: "user.tool_approval" as const,
@@ -174,19 +266,84 @@ export async function runApprovalTurn(
         : { status: "deny" as const, reason: a.reason ?? "denied" },
     })),
   });
-  return collectTurn(stream);
+  return collectTurn(stream, activeRunId);
 }
 
-async function collectTurn(stream: AsyncIterable<unknown>): Promise<TurnSummary> {
-  const events: unknown[] = [];
+function ensureRun(
+  db: ReturnType<typeof getDb>,
+  sessionId: string,
+  options: { runId?: string; kind?: RunKind; userId?: string },
+): string {
+  if (options.runId) {
+    const existing = getRun(db, options.runId);
+    if (!existing || existing.sessionId !== sessionId) {
+      throw new Error("Run does not belong to this session");
+    }
+    return existing.id;
+  }
+  return createRun(db, {
+    sessionId,
+    userId: options.userId ?? "cfo",
+    kind: options.kind ?? "question",
+  }).id;
+}
+
+function stateForEvent(event: RunEvent): {
+  status?: RunStatus;
+  currentStage: string;
+} {
+  if (event.type === "approval.requested" || event.type === "run.waiting_approval") {
+    return { status: "waiting_approval", currentStage: "approval" };
+  }
+  if (event.type === "run.completed") {
+    return { status: "done", currentStage: "complete" };
+  }
+  if (event.type === "run.failed") {
+    return { status: "error", currentStage: "complete" };
+  }
+  if (event.type === "run.cancelled") {
+    return { status: "cancelled", currentStage: "complete" };
+  }
+  return { currentStage: event.stage };
+}
+
+async function collectTurn(
+  stream: AsyncIterable<unknown>,
+  runId: string,
+): Promise<TurnSummary> {
+  const rawEvents: unknown[] = [];
+  const db = getDb();
+  migrate(db);
+  const context = createNormalizationContext();
   try {
-    for await (const item of stream) events.push(item);
+    for await (const item of stream) {
+      rawEvents.push(item);
+      for (const normalized of normalizeTrueForgeEvent(item, context)) {
+        const persisted = appendRunEvent(db, runId, normalized);
+        updateRun(db, runId, stateForEvent(persisted));
+      }
+    }
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Turn failed";
+    appendRunEvent(db, runId, {
+      type: "run.failed",
+      stage: "complete",
+      summary: message,
+      details: {},
+    });
+    updateRun(db, runId, { status: "error", currentStage: "complete" });
     return {
       status: "error",
-      output: err instanceof Error ? err.message : "Turn failed",
+      output: message,
       pendingApprovals: [],
+      charts: [],
+      runId,
+      events: listRunEvents(db, runId),
     };
   }
-  return summarizeTurnEvents(events);
+  return {
+    ...summarizeTurnEvents(rawEvents),
+    runId,
+    events: listRunEvents(db, runId),
+  };
 }

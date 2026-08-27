@@ -43,6 +43,10 @@ describe("MCP JSON-RPC", () => {
     ).result.tools.map((t) => t.name);
     expect(names).toContain("load_sample_pack");
     expect(names).toContain("query_cube");
+    expect(names).toContain("query_lake");
+    expect(names).toContain("query_sql");
+    expect(names).toContain("present_chart");
+    expect(names).toContain("load_lake");
     expect(names).toContain("request_publish_org");
   });
 

@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDb, migrate } from "@/lib/db/sqlite";
+import { createArtifact } from "@/lib/artifacts/store";
 import { callTool } from "@/mcp/tools";
 
 function freshDb() {
@@ -138,6 +139,45 @@ describe("MCP tools", () => {
     expect(result.instruction).toMatch(/source=upload/);
   });
 
+  it("inspects an artifact handle and proposes an approval-bound mapping", async () => {
+    process.env.DONECORNER_UPLOADS = join(
+      mkdtempSync(join(tmpdir(), "dc-handle-")),
+      "q",
+    );
+    const db = freshDb();
+    const artifact = createArtifact(db, {
+      ownerId: "cfo",
+      filename: "lake.csv",
+      mediaType: "text/csv",
+      bytes: Buffer.from(
+        "period,entity_id,account,amount,currency,scenario\n2026-01,co-a,revenue,10,USD,actual",
+      ),
+    });
+    const inspected = (await callTool(db, "inspect_file", {
+      artifactId: artifact.id,
+      runId: "run-not-persisted",
+      userId: "cfo",
+    })) as { profile: { rowCount: number }; nextTool: string };
+    expect(inspected.profile.rowCount).toBe(1);
+    expect(inspected.nextTool).toBe("get_mapping_proposal");
+
+    const proposal = (await callTool(db, "get_mapping_proposal", {
+      artifactId: artifact.id,
+      runId: "run-demo",
+      userId: "cfo",
+    })) as { id: string; hash: string; status: string };
+    expect(proposal.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(proposal.status).toBe("waiting_approval");
+    await expect(
+      callTool(db, "apply_mapping", {
+        proposalId: proposal.id,
+        proposalHash: "stale",
+        runId: "run-demo",
+        userId: "cfo",
+      }),
+    ).rejects.toThrow(/changed after review/i);
+  });
+
   it("runs a sandbox cleaner and loads upload rows into the cube", async () => {
     process.env.TRUEFORGE_SANDBOX = "1";
     process.env.DONECORNER_UPLOADS = join(
@@ -167,6 +207,13 @@ describe("MCP tools", () => {
     })) as { rows: { key: string; value: number }[] };
     expect(cube.rows.some((r) => r.key === "2026-01" && r.value === 100)).toBe(
       true,
+    );
+  });
+
+  it("query_sql rejects mutating statements before touching Postgres", async () => {
+    const db = freshDb();
+    await expect(callTool(db, "query_sql", { sql: "DELETE FROM facts" })).rejects.toThrow(
+      /select/i,
     );
   });
 });
