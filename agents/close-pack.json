@@ -14,7 +14,7 @@
         "save_personal_dashboard",
         "request_publish_org"
       ],
-      "requireApprovalForTools": ["request_publish_org"]
+      "requireApprovalForTools": ["load_lake", "request_publish_org"]
     }
   ]
 }

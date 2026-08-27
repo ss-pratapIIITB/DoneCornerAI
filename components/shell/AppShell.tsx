@@ -394,7 +394,7 @@ export function AppShell({ children }: Props) {
     );
   }, [board, enterEdit, setAgent]);
 
-  async function ask(q: string, files: File[] = []) {
+  async function ask(q: string, files: File[] = []): Promise<AgentStatus> {
     setAgent(
       "running",
       files.length ? "Quarantining attached files…" : "Starting agent run…",
@@ -539,6 +539,7 @@ export function AppShell({ children }: Props) {
       result.status === "waiting_approval" ? "waiting_approval" : result.status,
       answer,
     );
+    return result.status === "waiting_approval" ? "waiting_approval" : result.status;
   }
 
   async function submitAgent(q: string, files: File[]) {
@@ -578,9 +579,10 @@ export function AppShell({ children }: Props) {
       );
     }
     try {
-      await ask(
-        "Load the sample Northstar close pack. Call load_lake now, then present_chart for revenue by period.",
+      const status = await ask(
+        "Request approval to load_lake the sample Northstar close pack, then present_chart for revenue by period.",
       );
+      if (status === "error") return seedSamplePackHttp();
     } catch {
       return seedSamplePackHttp();
     }

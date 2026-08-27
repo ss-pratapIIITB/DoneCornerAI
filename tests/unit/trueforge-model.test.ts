@@ -25,6 +25,12 @@ describe("closePackModel", () => {
     expect(closePackModel()).toBe("openai/gpt-5-5");
   });
 
+  it("gates irreversible lake replace and org publish on TrueForge approval", () => {
+    expect(
+      closePackSpec("openai/gpt-5-4-mini").mcpServers?.[0]?.requireApprovalForTools,
+    ).toEqual(["apply_mapping", "load_lake", "request_publish_org"]);
+  });
+
   it("does not require TrueForge skills that may be unconfigured", () => {
     expect(closePackSpec("openai/gpt-5-4-mini").skills ?? []).toEqual([]);
   });
