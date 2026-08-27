@@ -63,6 +63,7 @@ describe("run ledger", () => {
         artifactId: "artifact-1",
         storagePath: "/private/quarantine/upload.csv",
         token: "secret",
+        content: "Authorization Bearer abc.def.ghi output token=supersecret",
       },
     });
     updateRun(db, run.id, { status: "waiting_approval", currentStage: "mapping" });
@@ -71,6 +72,8 @@ describe("run ledger", () => {
       artifactId: "artifact-1",
       storagePath: "[redacted]",
       token: "[redacted]",
+      content:
+        "Authorization Bearer [redacted] output token=[redacted]",
     });
     expect(event.summary).toBe(
       "Inspected upload with token=[redacted] at [redacted-path]",
@@ -79,6 +82,20 @@ describe("run ledger", () => {
       status: "waiting_approval",
       currentStage: "mapping",
     });
+  });
+
+  it("does not let later updates leave a terminal run", () => {
+    const db = freshDb();
+    const run = createRun(db, {
+      sessionId: "session-3",
+      kind: "question",
+      userId: "cfo",
+    });
+    updateRun(db, run.id, { status: "error", currentStage: "error" });
+    expect(updateRun(db, run.id, { status: "done", currentStage: "complete" })).toMatchObject({
+      status: "error",
+    });
+    expect(getRun(db, run.id)?.status).toBe("error");
   });
 
   it("lists only runs owned by the requesting user", () => {
