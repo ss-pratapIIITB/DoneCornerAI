@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Build (agentic ingestion + observable workspace)
 
-**Current step:** Addressing remaining Qodo Highs on PRs #11/#12. PR #13 `/review` is in flight after DSL hardening.
+**Current step:** PR #13 Qodo follow-up: preserve layout on org publish. PRs #11/#12 `/review` still in flight.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 

@@ -70,7 +70,7 @@ export function WidgetFrame({
     const start = drag.current;
     const parent = box.current?.parentElement;
     if (!start || !parent) return;
-    const dw = ((e.clientX - start.x) / parent.clientWidth) * 100;
+    const dw = fill ? 0 : ((e.clientX - start.x) / parent.clientWidth) * 100;
     const dh = (e.clientY - start.y) / 16;
     setSize({
       w: Math.min(100, Math.max(40, start.w + dw)),
@@ -86,13 +86,25 @@ export function WidgetFrame({
   }
 
   function resizeWithKeyboard(e: KeyboardEvent<HTMLButtonElement>) {
-    const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+    const keys = fill
+      ? ["ArrowUp", "ArrowDown"]
+      : ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
     if (!keys.includes(e.key)) return;
     e.preventDefault();
     setSize((current) => ({
       w: Math.min(
         100,
-        Math.max(40, current.w + (e.key === "ArrowRight" ? 4 : e.key === "ArrowLeft" ? -4 : 0)),
+        Math.max(
+          40,
+          current.w +
+            (fill
+              ? 0
+              : e.key === "ArrowRight"
+                ? 4
+                : e.key === "ArrowLeft"
+                  ? -4
+                  : 0),
+        ),
       ),
       h: Math.min(
         56,
@@ -168,8 +180,14 @@ export function WidgetFrame({
             onPointerUp={endResize}
             onPointerCancel={endResize}
             onKeyDown={resizeWithKeyboard}
-            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-            title="Drag to resize, or use arrow keys"
+            aria-keyshortcuts={
+              fill ? "ArrowUp ArrowDown" : "ArrowLeft ArrowRight ArrowUp ArrowDown"
+            }
+            title={
+              fill
+                ? "Drag to change height, or use up and down arrow keys"
+                : "Drag to resize, or use arrow keys"
+            }
           />
         ) : null}
       </article>

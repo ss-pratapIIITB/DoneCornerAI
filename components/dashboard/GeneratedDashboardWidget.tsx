@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import {
   Bar,
   BarChart,
@@ -314,13 +314,15 @@ function PrimitiveContent(props: PrimitiveContentProps) {
   );
 }
 
+export type GeneratedDashboardWidgetProps = {
+  widget: Widget;
+  mode: "view" | "edit";
+};
+
 export function GeneratedDashboardWidget({
   widget,
   mode,
-}: {
-  widget: Widget;
-  mode: "view" | "edit";
-}) {
+}: GeneratedDashboardWidgetProps): ReactElement | null {
   const primitive = widget.primitive;
   const definition = DASHBOARD_PRIMITIVES_V1.find(
     (candidate) => candidate.id === primitive,

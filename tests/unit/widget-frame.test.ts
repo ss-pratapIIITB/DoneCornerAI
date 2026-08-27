@@ -45,6 +45,19 @@ describe("widget frame exports", () => {
     expect(document.querySelector(".resize-handle")).toBeNull();
   });
 
+  it("limits filled widgets to vertical keyboard resize", () => {
+    document.body.innerHTML = renderToStaticMarkup(
+      createElement(
+        WidgetFrame,
+        { title: "Grid", fill: true, allowResize: true },
+        "ok",
+      ),
+    );
+    expect(
+      document.querySelector(".resize-handle")?.getAttribute("aria-keyshortcuts"),
+    ).toBe("ArrowUp ArrowDown");
+  });
+
   it("inlines CSS variable paints before rasterizing SVG", () => {
     const xml = inlineSvgCssVariables(
       'stroke="var(--gold)" fill="var(--cyan)"',

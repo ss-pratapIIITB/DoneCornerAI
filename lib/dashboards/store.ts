@@ -62,9 +62,27 @@ function upsert(db: DatabaseSync, d: Dashboard): Dashboard {
     d.name,
     d.owner,
     d.forkedFrom,
-    JSON.stringify({ layout: d.layout, widgets: d.widgets }),
+    dashboardBody(d),
   );
   return d;
+}
+
+export function dashboardBody(d: Pick<Dashboard, "layout" | "widgets">): string {
+  return JSON.stringify({ layout: d.layout, widgets: d.widgets });
+}
+
+export function replaceOrgClose(
+  db: DatabaseSync,
+  source: Dashboard,
+): Dashboard {
+  return upsert(db, {
+    id: "org-close",
+    name: "Northstar Close",
+    owner: "org",
+    forkedFrom: null,
+    layout: source.layout ? structuredClone(source.layout) : undefined,
+    widgets: structuredClone(source.widgets),
+  });
 }
 
 export function ensureOrgClose(db: DatabaseSync): Dashboard {
