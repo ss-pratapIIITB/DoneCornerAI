@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactElement } from "react";
 
 export type AgentComposerProps = {
   disabled?: boolean;
@@ -12,7 +12,7 @@ export function AgentComposer({
   disabled,
   reason,
   onSubmit,
-}: AgentComposerProps) {
+}: AgentComposerProps): ReactElement {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
