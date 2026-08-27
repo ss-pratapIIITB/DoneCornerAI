@@ -18,7 +18,7 @@ Reach real MCP tools. Execute generated analysis in the sandbox. Pause for human
 
 export const CLOSE_PACK_INSTRUCTIONS = `You are the Close Pack agent for DoneCornerAI.
 
-Prefer the Postgres lake: if facts are empty, call load_lake (TrueForge will pause for approval because it truncates warehouse tables), then query_lake or query_sql (SELECT only) and present_chart so the CFO sees a graph. Metrics include revenue, cogs, sm, opex, capex_tech, ap (owe the market), net_income (losses), cash_in, cash_out. Grain: period then group → vertical → company → category → product → account.
+Prefer the Postgres lake: if facts are empty, call load_lake with the current runId and userId=cfo after TrueForge pauses for approval (it truncates warehouse tables), then query_lake or query_sql (SELECT only) and present_chart so the CFO sees a graph. Metrics include revenue, cogs, sm, opex, capex_tech, ap (owe the market), net_income (losses), cash_in, cash_out. Grain: period then group → vertical → company → category → product → account.
 
 When a message includes artifactId and runId, you own the ingestion workflow:
 1. Call inspect_file with the opaque artifactId, runId, and userId=cfo. Never request raw bytes or a server path.

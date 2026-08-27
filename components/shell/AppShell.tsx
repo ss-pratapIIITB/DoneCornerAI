@@ -553,39 +553,21 @@ export function AppShell({ children }: Props) {
     }
   }
 
-  async function seedSamplePackHttp(): Promise<number> {
-    await fetch("/api/pack/load", { method: "POST" });
-    const res = await fetch("/api/lake/load", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ confirm: true }),
-    });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "Could not load the lake pack");
-    }
-    const body = (await res.json()) as { facts: number };
-    setAgent(
-      "done",
-      `Lake loaded without TrueForge. ${body.facts.toLocaleString()} fact rows in Postgres.`,
-    );
-    return body.facts;
-  }
-
   async function loadSamplePack(): Promise<number | undefined> {
     if (agentStatus === "running" || agentStatus === "waiting_approval") {
       throw new Error(
         "Wait for the agent to finish or resolve approval before loading the sample pack.",
       );
     }
-    try {
-      const status = await ask(
-        "Request approval to load_lake the sample Northstar close pack, then present_chart for revenue by period.",
+    const status = await ask(
+      "Request approval to load_lake the sample Northstar close pack with this runId and userId=cfo, then present_chart for revenue by period.",
+    );
+    if (status === "error") {
+      throw new Error(
+        "TrueForge could not load the sample pack. Approve load_lake when the rail pauses.",
       );
-      if (status === "error") return seedSamplePackHttp();
-    } catch {
-      return seedSamplePackHttp();
     }
+    return undefined;
   }
 
   async function resolveRail(decision: "approved" | "denied") {

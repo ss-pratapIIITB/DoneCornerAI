@@ -19,8 +19,15 @@ export const MCP_TOOLS: McpToolDef[] = [
   {
     name: "load_lake",
     description:
-      "Replace the Postgres lake with the Northstar Group pack (TRUNCATE facts). Requires TrueForge approval.",
-    inputSchema: { type: "object", properties: {} },
+      "Replace the Postgres lake with the Northstar Group pack (TRUNCATE facts). Requires a current TrueForge load_lake approval for this run.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        runId: { type: "string" },
+        userId: { type: "string" },
+      },
+      required: ["runId", "userId"],
+    },
   },
   {
     name: "upload_close_file",

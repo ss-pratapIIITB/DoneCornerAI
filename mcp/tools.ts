@@ -20,6 +20,10 @@ import {
 import { loadSamplePack } from "@/lib/pack/load-sample";
 import { ingestCloseUpload } from "@/lib/pack/ingest";
 import { seedLake } from "@/lib/lake/seed";
+import {
+  consumeLakeLoadApproval,
+  requireLakeLoadApproval,
+} from "@/lib/lake/approvals";
 import { queryLake } from "@/lib/lake/query";
 import { queryWarehouseSql } from "@/lib/lake/sql";
 import type { LakeGrain, LakeQuery } from "@/lib/lake/types";
@@ -67,8 +71,17 @@ export async function callTool(
   switch (name as ToolName) {
     case "load_sample_pack":
       return loadSamplePack(db);
-    case "load_lake":
-      return seedLake();
+    case "load_lake": {
+      const runId = String(args.runId ?? "");
+      const userId = String(args.userId ?? "");
+      if (!runId || !userId) {
+        throw new Error("runId and userId are required");
+      }
+      const approval = requireLakeLoadApproval(db, { runId, userId });
+      const result = await seedLake();
+      consumeLakeLoadApproval(db, approval.toolCallId);
+      return result;
+    }
     case "upload_close_file":
       return ingestCloseUpload(db, {
         filename: String(args.filename ?? "upload.csv"),

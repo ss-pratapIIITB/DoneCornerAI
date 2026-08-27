@@ -7,6 +7,7 @@
       "name": "donecorner",
       "enableTools": [
         "load_sample_pack",
+        "load_lake",
         "upload_close_file",
         "describe_schema",
         "query_cube",

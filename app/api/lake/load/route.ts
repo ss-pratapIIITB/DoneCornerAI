@@ -1,6 +1,5 @@
 import { jsonError, userFromRequest } from "@/lib/api/http";
 import { ForbiddenError } from "@/lib/identity/errors";
-import { seedLake } from "@/lib/lake/seed";
 
 export const runtime = "nodejs";
 
@@ -9,15 +8,13 @@ export async function POST(req: Request): Promise<Response> {
     if (!userFromRequest(req).canEdit) {
       throw new ForbiddenError("Only finance editors can reset sample data.");
     }
-    const body = (await req.json().catch(() => ({}))) as { confirm?: boolean };
-    if (body.confirm !== true) {
-      return Response.json(
-        { error: "Confirm is required before resetting sample lake data." },
-        { status: 400 },
-      );
-    }
-    const result = await seedLake();
-    return Response.json(result);
+    return Response.json(
+      {
+        error:
+          "Replacing the lake requires an approved load_lake tool call. Confirm in the portal, then approve the TrueForge pause.",
+      },
+      { status: 403 },
+    );
   } catch (err) {
     return jsonError(err);
   }
