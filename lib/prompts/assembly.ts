@@ -156,11 +156,46 @@ export function getPromptVersion(
   return row ? fromRow(row) : null;
 }
 
+export const DEFAULT_GUIDANCE = {
+  objective: "Protect close quality and explain material exceptions.",
+  businessContext:
+    "Northstar Group synthetic SaaS pack, USD actual versus budget.",
+  materiality: "Flag 5% or $1M variances and overdue AP.",
+  dashboardPreferences:
+    "Exception-first Signal Room, then P&L, cash, and drillable variance charts.",
+} as const;
+
 export function latestPromptGuidance(
   db: DatabaseSync,
   ownerId: string,
 ): PromptGuidance | null {
   return listPromptVersions(db, ownerId)[0] ?? null;
+}
+
+export function ensureDefaultGuidance(
+  db: DatabaseSync,
+  ownerId: string,
+): PromptGuidance {
+  return (
+    latestPromptGuidance(db, ownerId) ??
+    savePromptGuidance(db, { ownerId, ...DEFAULT_GUIDANCE })
+  );
+}
+
+export function promptForTurn(
+  db: DatabaseSync,
+  ownerId: string,
+  input: { runContext?: string; userMessage: string },
+): { guidance: PromptGuidance; assembled: AssembledPrompt } {
+  const guidance = ensureDefaultGuidance(db, ownerId);
+  return {
+    guidance,
+    assembled: assemblePrompt({
+      guidance,
+      runContext: input.runContext,
+      userMessage: input.userMessage,
+    }),
+  };
 }
 
 export function restorePromptVersion(

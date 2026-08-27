@@ -32,6 +32,7 @@ type PortalValue = {
   saveBoard: (next: Dashboard) => Promise<Dashboard>;
   refreshBoard: () => Promise<void>;
   requestPublish: () => Promise<void>;
+  loadSamplePack: () => Promise<number | undefined>;
   setAgent: (status: AgentStatus, detail: string) => void;
   lastCharts: AgentChart[];
   pinChart: (chart: AgentChart, boardId?: string) => Promise<void>;
@@ -550,6 +551,31 @@ export function AppShell({ children }: Props) {
     }
   }
 
+  async function loadSamplePack(): Promise<number | undefined> {
+    if (!queryDisabled) {
+      await ask(
+        "Load the sample Northstar close pack. Call load_lake now, then present_chart for revenue by period.",
+      );
+      return;
+    }
+    await fetch("/api/pack/load", { method: "POST" });
+    const res = await fetch("/api/lake/load", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ confirm: true }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? "Could not load the lake pack");
+    }
+    const body = (await res.json()) as { facts: number };
+    setAgent(
+      "done",
+      `Lake loaded without TrueForge. ${body.facts.toLocaleString()} fact rows in Postgres.`,
+    );
+    return body.facts;
+  }
+
   async function resolveRail(decision: "approved" | "denied") {
     const hadPublish = Boolean(publishId);
     const hadTfApproval = pendingTf.length > 0;
@@ -694,11 +720,12 @@ export function AppShell({ children }: Props) {
       saveBoard,
       refreshBoard,
       requestPublish,
+      loadSamplePack,
       setAgent,
       lastCharts,
       pinChart,
     }),
-    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, setAgent, lastCharts, pinChart],
+    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, loadSamplePack, setAgent, lastCharts, pinChart],
   );
 
   const routeLabel =
@@ -769,6 +796,7 @@ export function AppShell({ children }: Props) {
           ]}
           disabled={queryDisabled}
           disabledReason={queryReason}
+          canEditPrompt={mode === "edit"}
           onSubmit={submitAgent}
           onApprove={() => void resolveRail("approved")}
           onDeny={() => void resolveRail("denied")}

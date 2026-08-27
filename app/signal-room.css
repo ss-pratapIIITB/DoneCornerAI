@@ -576,12 +576,15 @@ body {
 }
 
 .agent-rail-head {
+  display: flex;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .agent-rail-toggle {
   display: flex;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 0;
   align-items: center;
   justify-content: space-between;
@@ -590,6 +593,111 @@ body {
   background: transparent;
   color: inherit;
   text-align: left;
+}
+
+.prompt-open {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.61rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prompt-open:hover,
+.prompt-open[aria-expanded="true"] {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.prompt-workspace {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.prompt-workspace-head h3 {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.prompt-workspace-head p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.prompt-fields,
+.prompt-readonly {
+  display: grid;
+  margin-top: 0.75rem;
+  gap: 0.55rem;
+}
+
+.prompt-fields label,
+.prompt-actions label {
+  display: grid;
+  gap: 0.28rem;
+  color: var(--muted);
+  font-size: 0.61rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prompt-fields textarea,
+.prompt-actions select,
+.prompt-section pre {
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.prompt-fields textarea {
+  min-height: 3.4rem;
+}
+
+.prompt-fields textarea:focus,
+.prompt-actions select:focus {
+  outline: 0;
+  border-color: var(--gold);
+}
+
+.prompt-fields textarea:disabled {
+  opacity: 0.6;
+}
+
+.prompt-actions {
+  display: grid;
+  margin-top: 0.65rem;
+  gap: 0.55rem;
+}
+
+.prompt-hint {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.prompt-section summary {
+  cursor: pointer;
+  color: var(--paper);
+  font-size: 0.68rem;
+}
+
+.prompt-section pre {
+  margin: 0.35rem 0 0;
+  max-height: 8rem;
+  overflow: auto;
+  white-space: pre-wrap;
 }
 
 .agent-rail h2 {
@@ -1104,7 +1212,8 @@ body {
   .agent-rail[data-expanded="false"] .agent-capabilities,
   .agent-rail[data-expanded="false"] .agent-transcript,
   .agent-rail[data-expanded="false"] .approval-actions,
-  .agent-rail[data-expanded="false"] .agent-composer {
+  .agent-rail[data-expanded="false"] .agent-composer,
+  .agent-rail[data-expanded="false"] .prompt-workspace {
     display: none;
   }
 

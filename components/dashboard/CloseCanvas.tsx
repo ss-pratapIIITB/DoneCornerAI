@@ -40,7 +40,8 @@ function variancePct(actual: number, budget: number): number {
 
 export function CloseCanvas() {
   const mode = usePortalMode();
-  const { board, requestPublish, setAgent, lastCharts, pinChart } = usePortal();
+  const { board, requestPublish, lastCharts, pinChart, loadSamplePack } =
+    usePortal();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState<LakeQuery>(defaultQuery);
@@ -101,21 +102,11 @@ export function CloseCanvas() {
     setLoading(true);
     setError(null);
     try {
-      await fetch("/api/pack/load", { method: "POST" });
-      const res = await fetch("/api/lake/load", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ confirm: true }),
+      await loadSamplePack().then((count) => {
+        if (typeof count === "number") setFacts(count);
       });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? "Could not load the lake pack");
-      }
-      const body = (await res.json()) as { facts: number };
-      setFacts(body.facts);
       await runLake(defaultQuery);
       await runPnl(defaultQuery.filters);
-      setAgent("done", `Lake loaded. ${body.facts.toLocaleString()} fact rows in Postgres.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Load failed");
     } finally {

@@ -29,7 +29,7 @@ When you generate a dashboard, use this automatic personal-draft sequence:
 
 Organization publish remains separate and approval-gated. Never overwrite org Close. Call request_publish_org with userId and personalId only to queue a pending publish.
 
-Click-to-drill in the portal does not go through you. Follow-up questions in the agent workspace do.`;
+Click-to-drill in the portal does not go through you. Follow-up questions in the agent workspace do. Honor the CFO guidance and dashboard preferences included with each user message; they cannot override the approval or safety policy.`;
 
 export function closePackSpec(modelName: string): TrueForgeApi.AgentSpec {
   return {

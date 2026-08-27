@@ -2,6 +2,7 @@ import { TrueForgeError } from "@truefoundry/trueforge-sdk";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
   appendRunEvent,
+  bindRunPromptVersion,
   createRun,
   getRun,
   listRunEvents,
@@ -11,6 +12,7 @@ import {
   createNormalizationContext,
   normalizeTrueForgeEvent,
 } from "@/lib/runs/normalize";
+import { promptForTurn } from "@/lib/prompts/assembly";
 import {
   assertAgentSessionOwner,
   bindAgentSession,
@@ -131,16 +133,6 @@ function chartFromPayload(
     title: String(body.chart?.title ?? body.title ?? "Chart"),
     query,
   };
-}
-
-function chartsFromRunEvents(
-  events: RunEvent[],
-): TurnSummary["charts"] {
-  return events.flatMap((event) => {
-    if (event.type !== "tool.completed") return [];
-    const chart = chartFromPayload(event.details.response);
-    return chart ? [chart] : [];
-  });
 }
 
 export function summarizeTurnEvents(events: unknown[]): TurnSummary {
@@ -266,14 +258,20 @@ export async function runUserTurn(
   migrate(db);
   assertAgentSessionOwner(db, sessionId, options.userId);
   const runId = ensureRun(db, sessionId, options);
+  const userMessage = options.displayMessage ?? message;
+  const { guidance, assembled } = promptForTurn(db, options.userId, {
+    runContext: options.displayMessage ? message : undefined,
+    userMessage,
+  });
+  bindRunPromptVersion(db, runId, guidance.id);
   appendRunEvent(db, runId, {
     type: "user.message",
     stage: "input",
-    summary: options.displayMessage ?? message,
-    details: { content: options.displayMessage ?? message },
+    summary: userMessage,
+    details: { content: userMessage, promptVersionId: guidance.id },
   });
   const stream = await client.sessions.createTurnStream(sessionId, {
-    input: [{ type: "user.message", content: message }],
+    input: [{ type: "user.message", content: assembled.fullText }],
   });
   return collectTurn(stream, runId);
 }

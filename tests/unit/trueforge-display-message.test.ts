@@ -28,7 +28,7 @@ vi.mock("@/lib/trueforge/client", () => ({
 }));
 
 import { getDb, migrate } from "@/lib/db/sqlite";
-import { createRun, listRunEvents } from "@/lib/runs/ledger";
+import { createRun, getRun, listRunEvents } from "@/lib/runs/ledger";
 import { bindAgentSession } from "@/lib/runs/sessions";
 import { runUserTurn } from "@/lib/trueforge/session";
 
@@ -66,5 +66,8 @@ describe("runUserTurn display message", () => {
       details: { content: "Inspect finance.csv" },
     });
     expect(sent.content).toContain("art_private");
+    expect(sent.content).toContain("Inspect finance.csv");
+    expect(sent.content).toContain("Immutable product role and safety policy");
+    expect(getRun(db, run.id)?.promptVersionId).toMatch(/^prompt_/);
   });
 });

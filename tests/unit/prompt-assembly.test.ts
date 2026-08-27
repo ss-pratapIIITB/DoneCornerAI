@@ -11,6 +11,8 @@ import {
   savePromptGuidance,
   SAFETY_POLICY,
   TOOL_POLICY,
+  DEFAULT_GUIDANCE,
+  promptForTurn,
 } from "@/lib/prompts/assembly";
 
 function setup() {
@@ -101,5 +103,14 @@ describe("prompt assembly", () => {
     expect(restored.id).not.toBe(first.id);
     expect(getPromptVersion(db, first.id)?.objective).toBe("Protect close quality");
     expect(listPromptVersions(db, "cfo")).toHaveLength(3);
+  });
+
+  it("seeds default guidance once and includes it in turn assembly", () => {
+    const db = setup();
+    const first = promptForTurn(db, "cfo", { userMessage: "Why did cash drop?" });
+    const second = promptForTurn(db, "cfo", { userMessage: "Again" });
+    expect(first.guidance.id).toBe(second.guidance.id);
+    expect(first.assembled.fullText).toContain(DEFAULT_GUIDANCE.objective);
+    expect(first.assembled.fullText).toContain("Why did cash drop?");
   });
 });
