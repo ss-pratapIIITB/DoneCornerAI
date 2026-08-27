@@ -59,6 +59,11 @@ export function migrate(db: DatabaseSync): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS agent_sessions (
+      session_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS run_events (
       id TEXT PRIMARY KEY,
       run_id TEXT NOT NULL REFERENCES agent_runs(id),
@@ -98,5 +103,17 @@ export function migrate(db: DatabaseSync): void {
     );
     CREATE INDEX IF NOT EXISTS mapping_proposals_artifact
       ON mapping_proposals(artifact_id, created_at DESC);
+    CREATE TABLE IF NOT EXISTS mapping_approvals (
+      proposal_id TEXT PRIMARY KEY REFERENCES mapping_proposals(id),
+      proposal_hash TEXT NOT NULL,
+      artifact_sha256 TEXT NOT NULL,
+      run_id TEXT NOT NULL REFERENCES agent_runs(id),
+      user_id TEXT NOT NULL,
+      tool_call_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      consumed_at TEXT
+    );
   `);
 }

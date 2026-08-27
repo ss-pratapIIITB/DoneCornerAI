@@ -192,17 +192,23 @@ export function listRunEvents(
 
 export function listRuns(
   db: DatabaseSync,
-  input: { sessionId?: string; limit?: number } = {},
+  input: { userId: string; sessionId?: string; limit?: number },
 ): AgentRun[] {
   const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
   const rows = input.sessionId
     ? (db
         .prepare(
-          "SELECT * FROM agent_runs WHERE session_id = ? ORDER BY created_at DESC LIMIT ?",
+          `SELECT * FROM agent_runs
+           WHERE user_id = ? AND session_id = ?
+           ORDER BY created_at DESC LIMIT ?`,
         )
-        .all(input.sessionId, limit) as RunRow[])
+        .all(input.userId, input.sessionId, limit) as RunRow[])
     : (db
-        .prepare("SELECT * FROM agent_runs ORDER BY created_at DESC LIMIT ?")
-        .all(limit) as RunRow[]);
+        .prepare(
+          `SELECT * FROM agent_runs
+           WHERE user_id = ?
+           ORDER BY created_at DESC LIMIT ?`,
+        )
+        .all(input.userId, limit) as RunRow[]);
   return rows.map(toRun);
 }

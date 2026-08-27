@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { PoolClient } from "pg";
 import { parseCsv } from "@/lib/artifacts/csv";
@@ -6,6 +6,10 @@ import {
   readArtifact,
   updateArtifactStatus,
 } from "@/lib/artifacts/store";
+import {
+  consumeMappingApproval,
+  requireMappingApproval,
+} from "@/lib/mapping/approvals";
 import { migrateWarehouse } from "@/lib/pg/migrate";
 import { getPool } from "@/lib/pg/pool";
 import {
@@ -52,6 +56,12 @@ function slug(value: string): string {
   );
 }
 
+export function uploadEntityKey(rawEntity: string): string {
+  const readable = slug(rawEntity).slice(0, 36);
+  const digest = createHash("sha256").update(rawEntity).digest("hex").slice(0, 10);
+  return `${readable}-${digest}`;
+}
+
 function value(
   row: Record<string, string>,
   column: string | null,
@@ -76,7 +86,7 @@ async function ensureUploadEntity(
     return existing.rows[0].id;
   }
 
-  const entitySlug = slug(rawEntity);
+  const entitySlug = uploadEntityKey(rawEntity);
   const nodes = [
     ["grp-upload", null, "group", "Uploaded data"],
     ["vert-upload", "grp-upload", "vertical", "Uploaded"],
@@ -120,20 +130,24 @@ function accountFor(
   ] ?? null;
 }
 
-export async function applyMapping(
-  db: DatabaseSync,
-  input: {
-    proposalId: string;
-    proposalHash: string;
-    ownerId: string;
-  },
-): Promise<{
+export type ApplyMappingInput = {
+  proposalId: string;
+  proposalHash: string;
+  ownerId: string;
+};
+
+export type ApplyMappingResult = {
   proposalId: string;
   artifactId: string;
   rowsWritten: number;
   rowsRejected: number;
   idempotent: boolean;
-}> {
+};
+
+export async function applyMapping(
+  db: DatabaseSync,
+  input: ApplyMappingInput,
+): Promise<ApplyMappingResult> {
   const proposal = getMappingProposal(db, input.proposalId);
   if (!proposal) throw new Error("Mapping proposal not found");
   if (proposal.hash !== input.proposalHash) {
@@ -142,6 +156,13 @@ export async function applyMapping(
   if (proposal.confidence === "low") {
     throw new Error("Mapping is incomplete and cannot be applied.");
   }
+  const approval = requireMappingApproval(db, {
+    proposalId: proposal.id,
+    proposalHash: proposal.hash,
+    artifactSha256: proposal.artifactSha256,
+    runId: proposal.runId,
+    userId: input.ownerId,
+  });
 
   const csv = parseCsv(readArtifact(db, proposal.artifactId, input.ownerId));
   await migrateWarehouse();
@@ -155,6 +176,9 @@ export async function applyMapping(
     );
     if (prior.rows[0]) {
       await client.query("COMMIT");
+      consumeMappingApproval(db, proposal.id);
+      markMappingApplied(db, proposal.id);
+      updateArtifactStatus(db, proposal.artifactId, "loaded");
       return {
         proposalId: proposal.id,
         artifactId: proposal.artifactId,
@@ -240,10 +264,17 @@ export async function applyMapping(
     await client.query(
       `INSERT INTO mapping_applications
         (idempotency_key, proposal_hash, approval_ref, run_id, rows_written)
-       VALUES ($1, $2, 'trueforge-tool-approval', $3, $4)`,
-      [idempotencyKey, proposal.hash, proposal.runId, rowsWritten],
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        idempotencyKey,
+        proposal.hash,
+        approval.toolCallId,
+        proposal.runId,
+        rowsWritten,
+      ],
     );
     await client.query("COMMIT");
+    consumeMappingApproval(db, proposal.id);
     markMappingApplied(db, proposal.id);
     updateArtifactStatus(db, proposal.artifactId, "loaded");
     return {

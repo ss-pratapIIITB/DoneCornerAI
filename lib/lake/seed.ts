@@ -95,33 +95,59 @@ export async function seedLake(): Promise<{
   const csvPath = join(LAKE_ROOT, "northstar-group", "facts.csv");
   writeFileSync(csvPath, csvLines.join("\n"));
   const objectId = randomUUID();
-
-  await pool.query("TRUNCATE facts, lake_objects, entities CASCADE");
-  for (const n of nodes) {
-    await pool.query(
-      "INSERT INTO entities (id, parent_id, level, name) VALUES ($1, $2, $3, $4)",
-      [n.id, n.parent, n.level, n.name],
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("TRUNCATE facts, lake_objects, entities CASCADE");
+    for (const n of nodes) {
+      await client.query(
+        "INSERT INTO entities (id, parent_id, level, name) VALUES ($1, $2, $3, $4)",
+        [n.id, n.parent, n.level, n.name],
+      );
+    }
+    await client.query(
+      "INSERT INTO lake_objects (id, path, dataset, content_type, bytes) VALUES ($1, $2, $3, $4, $5)",
+      [
+        objectId,
+        csvPath,
+        "northstar-group",
+        "text/csv",
+        Buffer.byteLength(csvLines.join("\n")),
+      ],
     );
-  }
-  await pool.query(
-    "INSERT INTO lake_objects (id, path, dataset, content_type, bytes) VALUES ($1, $2, $3, $4, $5)",
-    [objectId, csvPath, "northstar-group", "text/csv", Buffer.byteLength(csvLines.join("\n"))],
-  );
 
-  const chunk = 500;
-  for (let i = 0; i < facts.length; i += chunk) {
-    const slice = facts.slice(i, i + chunk);
-    const values: unknown[] = [];
-    const placeholders = slice.map((f, j) => {
-      const o = j * 6;
-      values.push(f.entity_id, f.period, f.account, f.amount, "USD", f.scenario);
-      return `($${o + 1},$${o + 2},$${o + 3},$${o + 4},$${o + 5},$${o + 6},'lake')`;
-    });
-    await pool.query(
-      `INSERT INTO facts (entity_id, period, account, amount, currency, scenario, source) VALUES ${placeholders.join(",")}`,
-      values,
-    );
+    const chunk = 500;
+    for (let i = 0; i < facts.length; i += chunk) {
+      const slice = facts.slice(i, i + chunk);
+      const values: unknown[] = [];
+      const placeholders = slice.map((fact, index) => {
+        const offset = index * 6;
+        values.push(
+          fact.entity_id,
+          fact.period,
+          fact.account,
+          fact.amount,
+          "USD",
+          fact.scenario,
+        );
+        return `($${offset + 1},$${offset + 2},$${offset + 3},$${offset + 4},$${offset + 5},$${offset + 6},'lake')`;
+      });
+      await client.query(
+        `INSERT INTO facts (entity_id, period, account, amount, currency, scenario, source) VALUES ${placeholders.join(",")}`,
+        values,
+      );
+    }
+    await client.query("COMMIT");
+    return {
+      objects: 1,
+      entities: nodes.length,
+      facts: facts.length,
+      path: csvPath,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return { objects: 1, entities: nodes.length, facts: facts.length, path: csvPath };
 }

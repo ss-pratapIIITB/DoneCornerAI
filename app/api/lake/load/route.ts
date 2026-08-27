@@ -1,10 +1,14 @@
-import { jsonError } from "@/lib/api/http";
+import { jsonError, userFromRequest } from "@/lib/api/http";
+import { ForbiddenError } from "@/lib/identity/errors";
 import { seedLake } from "@/lib/lake/seed";
 
 export const runtime = "nodejs";
 
-export async function POST(): Promise<Response> {
+export async function POST(req: Request): Promise<Response> {
   try {
+    if (!userFromRequest(req).canEdit) {
+      throw new ForbiddenError("Only finance editors can reset sample data.");
+    }
     const result = await seedLake();
     return Response.json(result);
   } catch (err) {
@@ -13,5 +17,8 @@ export async function POST(): Promise<Response> {
 }
 
 export async function GET(): Promise<Response> {
-  return POST();
+  return Response.json(
+    { error: "Use an authorized POST to load sample data." },
+    { status: 405, headers: { Allow: "POST" } },
+  );
 }

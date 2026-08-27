@@ -8,9 +8,12 @@ export const runtime = "nodejs";
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const sessionId = url.searchParams.get("sessionId") ?? undefined;
+  const user = userFromRequest(req);
   const db = getDb();
   migrate(db);
-  return Response.json({ runs: listRuns(db, { sessionId }) });
+  return Response.json({
+    runs: listRuns(db, { sessionId, userId: user.id }),
+  });
 }
 
 export async function POST(req: Request): Promise<Response> {

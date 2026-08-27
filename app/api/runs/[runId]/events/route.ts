@@ -1,3 +1,4 @@
+import { userFromRequest } from "@/lib/api/http";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import { getRun, listRunEvents } from "@/lib/runs/ledger";
 
@@ -8,10 +9,11 @@ export async function GET(
   { params }: { params: Promise<{ runId: string }> },
 ): Promise<Response> {
   const { runId } = await params;
+  const user = userFromRequest(req);
   const db = getDb();
   migrate(db);
   const run = getRun(db, runId);
-  if (!run) {
+  if (!run || run.userId !== user.id) {
     return Response.json({ error: "Run not found" }, { status: 404 });
   }
   const after = Number(new URL(req.url).searchParams.get("after") ?? "0");

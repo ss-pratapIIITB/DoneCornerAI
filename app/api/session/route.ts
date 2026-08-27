@@ -1,4 +1,4 @@
-import { jsonError } from "@/lib/api/http";
+import { jsonError, userFromRequest } from "@/lib/api/http";
 import { probeTrueForge, resumeOrCreateSession } from "@/lib/trueforge/session";
 
 export const runtime = "nodejs";
@@ -24,7 +24,10 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json(health, { status: 503 });
     }
     const body = (await req.json().catch(() => ({}))) as { sessionId?: string };
-    const session = await resumeOrCreateSession(body.sessionId);
+    const session = await resumeOrCreateSession(
+      body.sessionId,
+      userFromRequest(req).id,
+    );
     return Response.json(session);
   } catch (err) {
     return jsonError(err);

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { parseCsv, profileCsv, type CsvProfile } from "@/lib/artifacts/csv";
 import {
+  getArtifact,
   readArtifact,
   updateArtifactStatus,
 } from "@/lib/artifacts/store";
@@ -21,6 +22,7 @@ export type MappingProposal = {
   id: string;
   runId: string;
   artifactId: string;
+  artifactSha256: string;
   mapping: MappingFields;
   defaults: { currency: "USD"; scenario: "actual"; source: "upload" };
   transforms: string[];
@@ -85,6 +87,10 @@ export function createMappingProposal(
   db: DatabaseSync,
   input: { artifactId: string; runId: string; ownerId: string },
 ): MappingProposal {
+  const artifact = getArtifact(db, input.artifactId);
+  if (!artifact || artifact.ownerId !== input.ownerId) {
+    throw new Error("Artifact not found");
+  }
   const csv = parseCsv(readArtifact(db, input.artifactId, input.ownerId));
   const profile = profileCsv(csv);
   const mapping = inferMapping(csv.headers);
@@ -115,6 +121,7 @@ export function createMappingProposal(
   const id = `map_${randomUUID()}`;
   const core = {
     artifactId: input.artifactId,
+    artifactSha256: artifact.sha256,
     mapping,
     defaults: { currency: "USD" as const, scenario: "actual" as const, source: "upload" as const },
     transforms: [

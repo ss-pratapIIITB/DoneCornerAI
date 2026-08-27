@@ -8,11 +8,20 @@ export async function queryWarehouseSql(sql: string): Promise<{
 }> {
   const safe = assertReadOnlySelect(sql);
   await migrateWarehouse();
-  const pool = getPool();
-  const result = await pool.query(safe);
-  const columns = result.fields.map((f) => f.name);
-  return {
-    columns,
-    rows: result.rows as Record<string, unknown>[],
-  };
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN READ ONLY");
+    await client.query("SET LOCAL statement_timeout = '10s'");
+    const result = await client.query(safe);
+    await client.query("COMMIT");
+    return {
+      columns: result.fields.map((field) => field.name),
+      rows: result.rows as Record<string, unknown>[],
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }

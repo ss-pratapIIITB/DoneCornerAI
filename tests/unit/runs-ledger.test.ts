@@ -8,6 +8,7 @@ import {
   createRun,
   getRun,
   listRunEvents,
+  listRuns,
   updateRun,
 } from "@/lib/runs/ledger";
 
@@ -74,5 +75,26 @@ describe("run ledger", () => {
       status: "waiting_approval",
       currentStage: "mapping",
     });
+  });
+
+  it("lists only runs owned by the requesting user", () => {
+    const db = freshDb();
+    createRun(db, {
+      sessionId: "shared-looking-session",
+      kind: "question",
+      userId: "cfo",
+    });
+    const fpna = createRun(db, {
+      sessionId: "shared-looking-session",
+      kind: "question",
+      userId: "fpna",
+    });
+
+    expect(
+      listRuns(db, {
+        sessionId: "shared-looking-session",
+        userId: "fpna",
+      }),
+    ).toEqual([fpna]);
   });
 });
