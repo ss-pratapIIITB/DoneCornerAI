@@ -115,5 +115,16 @@ export function migrate(db: DatabaseSync): void {
       created_at TEXT NOT NULL,
       consumed_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS prompt_versions (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      objective TEXT NOT NULL,
+      business_context TEXT NOT NULL,
+      materiality TEXT NOT NULL,
+      dashboard_preferences TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS prompt_versions_owner_created
+      ON prompt_versions(owner_id, created_at DESC);
   `);
 }
