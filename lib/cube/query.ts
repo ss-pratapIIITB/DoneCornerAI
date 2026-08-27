@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import {
   grossMarginPct,
   grr,
@@ -85,9 +85,9 @@ function whereClause(
   filters: CubeFilters,
   table: FactTable,
   extra: string[] = [],
-): { sql: string; params: unknown[] } {
+): { sql: string; params: SQLInputValue[] } {
   const clauses = [...extra];
-  const params: unknown[] = [];
+  const params: SQLInputValue[] = [];
   if (table !== "arr") {
     clauses.push("scenario = ?");
     params.push(filters.scenario ?? "actual");
@@ -115,7 +115,7 @@ function aggregatePnl(
   db: DatabaseSync,
   q: CubeQuery,
   extra: string[] = [],
-  extraParams: unknown[] = [],
+  extraParams: SQLInputValue[] = [],
 ): CubeRow[] {
   const col = grainColumn(q.grain);
   const { sql, params } = whereClause(q.filters, "pnl", extra);
