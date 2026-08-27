@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Build (agentic ingestion + observable workspace)
 
-**Current step:** Implementing the approved agentic ingestion workspace as demo-first vertical slices. Slice 1 (observable TrueForge run ledger) is in progress.
+**Current step:** Observable ingestion and the unified agent workspace are implemented. Qodo High findings and the first PR #11 Medium follow-up batch are fixed; PR #12 Medium findings are next before dashboard DSL.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -42,9 +42,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [x] Chart export, widget fullscreen/resize, pin agent chart to any board
 - [x] Hierarchical drill including P&amp;L table cells
 - [x] Signal Room redesign: exception-first layout, responsive agent bar, accessible fullscreen/resize, documented design system
-- [ ] Observable TrueForge run ledger + replay
-- [ ] Agent-owned quarantine, inspection, mapping approval, and canonical load
-- [ ] Unified Markdown agent workspace + attachments
+- [x] Observable TrueForge run ledger + replay
+- [x] Agent-owned quarantine, inspection, mapping approval, and canonical load
+- [x] Unified Markdown agent workspace + attachments
 - [ ] Validated agent-designed dashboard DSL
 - [ ] Editable CFO guidance + read-only assembled prompt
 

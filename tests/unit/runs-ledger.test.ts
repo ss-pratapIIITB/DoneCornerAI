@@ -57,7 +57,8 @@ describe("run ledger", () => {
     const event = appendRunEvent(db, run.id, {
       type: "artifact.inspected",
       stage: "inspect",
-      summary: "Inspected upload",
+      summary:
+        "Inspected upload with token=top-secret at /Users/cfo/private.csv",
       details: {
         artifactId: "artifact-1",
         storagePath: "/private/quarantine/upload.csv",
@@ -71,6 +72,9 @@ describe("run ledger", () => {
       storagePath: "[redacted]",
       token: "[redacted]",
     });
+    expect(event.summary).toBe(
+      "Inspected upload with token=[redacted] at [redacted-path]",
+    );
     expect(getRun(db, run.id)).toMatchObject({
       status: "waiting_approval",
       currentStage: "mapping",

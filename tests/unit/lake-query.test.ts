@@ -69,4 +69,30 @@ describe.skipIf(!live)("Postgres lake", () => {
     expect(result.columns).toContain("n");
     expect(Number(result.rows[0]?.n)).toBeGreaterThan(1000);
   });
+
+  it("keeps facts attached above product level visible", async () => {
+    const client = new Client({ connectionString: databaseUrl() });
+    await client.connect();
+    const inserted = await client.query<{ id: number }>(
+      `INSERT INTO facts
+        (entity_id, period, account, amount, currency, scenario, source)
+       VALUES ('co-northstar-saas', '2026-01', 'revenue', 42, 'USD', 'actual', 'test')
+       RETURNING id`,
+    );
+    try {
+      const rows = await queryLake({
+        metric: "revenue",
+        grain: "period",
+        filters: { scenario: "actual", period: ["2026-01"] },
+      });
+      expect(rows).toEqual([
+        { key: "2026-01", label: "2026-01", value: 42 },
+      ]);
+    } finally {
+      await client.query("DELETE FROM facts WHERE id = $1", [
+        inserted.rows[0]!.id,
+      ]);
+      await client.end();
+    }
+  });
 });

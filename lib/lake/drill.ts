@@ -33,7 +33,7 @@ export function drillLakeUp(q: LakeQuery): LakeQuery {
   const filters = { ...q.filters };
   if (q.grain === "group") delete filters.period;
   else if (q.grain === "account") delete filters.product;
-  else delete filters[q.grain];
+  else if (prev !== "period" && prev !== "account") delete filters[prev];
   return { ...q, grain: prev, filters };
 }
 

@@ -5,9 +5,10 @@ import type { Dashboard } from "@/lib/dashboards/widgets";
 
 type Props = {
   onPin: (boardId?: string) => Promise<void>;
+  disabled?: boolean;
 };
 
-export function PinChartMenu({ onPin }: Props) {
+export function PinChartMenu({ onPin, disabled }: Props) {
   const [open, setOpen] = useState(false);
   const [boards, setBoards] = useState<Dashboard[]>([]);
   const [boardId, setBoardId] = useState("");
@@ -48,8 +49,13 @@ export function PinChartMenu({ onPin }: Props) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)}>
-        Pin to dashboard
+      <button
+        type="button"
+        disabled={disabled}
+        title={disabled ? "Switch to Edit to pin this chart" : undefined}
+        onClick={() => setOpen(true)}
+      >
+        {disabled ? "Edit to pin" : "Pin to dashboard"}
       </button>
     );
   }

@@ -31,14 +31,12 @@ export async function queryLake(q: LakeQuery): Promise<LakeRow[]> {
   await migrateWarehouse();
   const pool = getPool();
   const accounts = q.filters.account?.length ? q.filters.account : accountsFor(q.metric);
-  const joins = ENTITY_LEVELS.map((level, i) => {
-    const alias = `anc_${level}`;
-    if (i === ENTITY_LEVELS.length - 1) {
-      return `JOIN entities ${alias} ON ${alias}.id = f.entity_id`;
-    }
-    const child = `anc_${ENTITY_LEVELS[i + 1]}`;
-    return `JOIN entities ${alias} ON ${alias}.id = ${child}.parent_id`;
-  }).reverse();
+  const joins = ENTITY_LEVELS.map(
+    (level) =>
+      `LEFT JOIN entity_lineage anc_${level}
+         ON anc_${level}.leaf_id = f.entity_id
+        AND anc_${level}.level = '${level}'`,
+  );
 
   const where: string[] = ["f.scenario = $1", `f.account = ANY($2)`];
   const params: unknown[] = [q.filters.scenario ?? "actual", accounts];
@@ -58,6 +56,14 @@ export async function queryLake(q: LakeQuery): Promise<LakeRow[]> {
 
   const col = grainColumn(grain);
   const sql = `
+    WITH RECURSIVE entity_lineage AS (
+      SELECT id AS leaf_id, id, parent_id, level, name
+      FROM entities
+      UNION ALL
+      SELECT child.leaf_id, parent.id, parent.parent_id, parent.level, parent.name
+      FROM entity_lineage child
+      JOIN entities parent ON parent.id = child.parent_id
+    )
     SELECT ${col} AS key, ${col} AS label, SUM(f.amount)::float AS value
     FROM facts f
     ${joins.join("\n")}

@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import type { LakeQuery, LakeRow } from "@/lib/lake/types";
+import { ENTITY_LEVELS } from "@/lib/lake/types";
 import { drillLake, drillLakeUp, prevLakeGrain } from "@/lib/lake/drill";
 
 type Props = {
@@ -19,19 +20,26 @@ type Props = {
 
 export function LakeChart({ query, rows, onQueryChange }: Props) {
   const canUp = prevLakeGrain(query.grain) != null;
+  const ancestors = [
+    ...(query.filters.period ?? []).map((value) => `period ${value}`),
+    ...ENTITY_LEVELS.flatMap((level) =>
+      query.filters[level] ? [`${level} ${query.filters[level]}`] : [],
+    ),
+  ];
   return (
     <div className="chart-block" data-grain={query.grain}>
-      <div className="breadcrumbs">
+      <nav className="breadcrumbs" aria-label="Chart drill path">
         {canUp ? (
           <button type="button" onClick={() => onQueryChange(drillLakeUp(query))}>
             Up
           </button>
         ) : null}
-        <span>
-          {query.metric} by {query.grain}
-          {query.filters.period?.length ? ` · ${query.filters.period.join(",")}` : ""}
-        </span>
-      </div>
+        <span>{query.metric}</span>
+        {ancestors.map((ancestor) => (
+          <span key={ancestor}>/ {ancestor}</span>
+        ))}
+        <strong>/ by {query.grain}</strong>
+      </nav>
       <div className="chart-frame">
         <ResponsiveContainer width="100%" height={280}>
           <BarChart
