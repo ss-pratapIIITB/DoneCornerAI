@@ -2,13 +2,17 @@
 
 import { useRef, useState, type FormEvent } from "react";
 
-type Props = {
+export type AgentComposerProps = {
   disabled?: boolean;
   reason?: string;
   onSubmit: (message: string, files: File[]) => Promise<void>;
 };
 
-export function AgentComposer({ disabled, reason, onSubmit }: Props) {
+export function AgentComposer({
+  disabled,
+  reason,
+  onSubmit,
+}: AgentComposerProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);

@@ -1,4 +1,7 @@
-import { createArtifact } from "@/lib/artifacts/store";
+import {
+  createArtifact,
+  discardQuarantinedArtifact,
+} from "@/lib/artifacts/store";
 import { jsonError, userFromRequest } from "@/lib/api/http";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import { ForbiddenError } from "@/lib/identity/errors";
@@ -23,6 +26,23 @@ export async function POST(req: Request): Promise<Response> {
       bytes: Buffer.from(await file.arrayBuffer()),
     });
     return Response.json({ artifact }, { status: 201 });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
+export async function DELETE(req: Request): Promise<Response> {
+  try {
+    const user = userFromRequest(req);
+    if (!user.canEdit) throw new ForbiddenError();
+    const body = (await req.json()) as { artifactId?: string };
+    if (!body.artifactId) {
+      return Response.json({ error: "artifactId required" }, { status: 400 });
+    }
+    const db = getDb();
+    migrate(db);
+    discardQuarantinedArtifact(db, body.artifactId, user.id);
+    return new Response(null, { status: 204 });
   } catch (error) {
     return jsonError(error);
   }

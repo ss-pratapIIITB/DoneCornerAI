@@ -48,6 +48,28 @@ export function usePortalMode(): Mode {
   return usePortal().mode;
 }
 
+type UploadedArtifact = { id: string; name: string };
+
+async function discardArtifacts(artifacts: UploadedArtifact[]): Promise<void> {
+  await Promise.allSettled(
+    artifacts.map((artifact) =>
+      fetch("/api/artifacts", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ artifactId: artifact.id }),
+      }),
+    ),
+  );
+}
+
+async function markRunFailed(runId: string, summary: string): Promise<void> {
+  await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ summary }),
+  }).catch(() => undefined);
+}
+
 const TF_SESSION = "donecorner.tf.session";
 
 type RunWithEvents = AgentRun & { events: RunEvent[] };
@@ -353,7 +375,7 @@ export function AppShell({ children }: Props) {
     const session = (await created.json()) as { id: string };
     localStorage.setItem(TF_SESSION, session.id);
     setTfSession(session.id);
-    const artifacts = await Promise.all(
+    const uploadResults = await Promise.allSettled(
       files.map(async (file) => {
         const form = new FormData();
         form.append("file", file);
@@ -373,13 +395,28 @@ export function AppShell({ children }: Props) {
         return { id: body.artifact.id, name: body.artifact.filename };
       }),
     );
+    const artifacts = uploadResults.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    );
+    const failedUpload = uploadResults.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (failedUpload) {
+      await discardArtifacts(artifacts);
+      throw failedUpload.reason instanceof Error
+        ? failedUpload.reason
+        : new Error("Could not upload every attached file.");
+    }
     const kind = artifacts.length ? "file_ingest" : "question";
     const started = await fetch("/api/runs", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ sessionId: session.id, kind }),
     });
-    if (!started.ok) throw new Error("Could not create an observable agent run.");
+    if (!started.ok) {
+      await discardArtifacts(artifacts);
+      throw new Error("Could not create an observable agent run.");
+    }
     const { run } = (await started.json()) as { run: AgentRun };
     const displayMessage =
       q || `Inspect ${artifacts.map((artifact) => artifact.name).join(", ")}`;
@@ -403,18 +440,25 @@ export function AppShell({ children }: Props) {
           .map((artifact) => `- artifactId=${artifact.id} name=${artifact.name}`)
           .join("\n")}`
       : "";
-    const turn = await fetch("/api/session/turn", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        sessionId: session.id,
-        runId: run.id,
-        kind,
-        displayMessage,
-        message: `${prompt}${artifactContext}`,
-      }),
-    });
+    let turn: Response;
+    try {
+      turn = await fetch("/api/session/turn", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionId: session.id,
+          runId: run.id,
+          kind,
+          displayMessage,
+          message: `${prompt}${artifactContext}`,
+        }),
+      });
+    } catch (error) {
+      await markRunFailed(run.id, "Agent turn request could not reach the server.");
+      throw error;
+    }
     if (!turn.ok) {
+      await markRunFailed(run.id, "Agent turn failed before completion.");
       setAgent("error", "The query turn failed.");
       throw new Error("The agent turn failed.");
     }
