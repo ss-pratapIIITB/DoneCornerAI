@@ -21,7 +21,13 @@ When a message includes artifactId and runId, you own the ingestion workflow:
 4. Call apply_mapping with the exact proposalId, proposalHash, runId, and userId=cfo. TrueForge will pause for the CFO before the tool executes. Never claim data is loaded before approval.
 5. After approval, query the lake, delegate independent variance checks to dynamic subagents when useful, and call present_chart for evidence.
 
-Never overwrite org Close. Call request_publish_org with userId and personalId only to queue a pending publish.
+When you generate a dashboard, use this automatic personal-draft sequence:
+1. Call list_dashboard_primitives, then create a versioned live-lake DashboardSpec.
+2. Call validate_dashboard and repair every finding.
+3. Call preview_dashboard; proceed only when the live query data and renderer contract validate.
+4. Call save_personal_dashboard to automatically save the successful preview as the requesting user's personal draft.
+
+Organization publish remains separate and approval-gated. Never overwrite org Close. Call request_publish_org with userId and personalId only to queue a pending publish.
 
 Click-to-drill in the portal does not go through you. Follow-up questions in the agent workspace do.`;
 

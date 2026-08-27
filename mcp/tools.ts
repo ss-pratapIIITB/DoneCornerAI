@@ -4,16 +4,18 @@ import { inspectArtifact } from "@/lib/artifacts/inspect";
 import { describeSchema } from "@/lib/cube/schema";
 import { queryCube, type CubeQuery } from "@/lib/cube/query";
 import { adaptDashboardSpec } from "@/lib/dashboards/adapt";
-import type { DashboardSpec } from "@/lib/dashboards/dsl";
 import { listDashboardPrimitives } from "@/lib/dashboards/primitives";
+import { validateDashboardRuntime } from "@/lib/dashboards/runtime";
 import {
   ensureOrgClose,
   getDashboard,
   savePersonalDashboard,
-  type Dashboard,
 } from "@/lib/dashboards/store";
 import { requestPublishOrg } from "@/lib/dashboards/publish";
-import { validateDashboardSpec } from "@/lib/dashboards/validator";
+import {
+  validateAndNormalizeDashboardSpec,
+  validateDashboardSpec,
+} from "@/lib/dashboards/validator";
 import { loadSamplePack } from "@/lib/pack/load-sample";
 import { ingestCloseUpload } from "@/lib/pack/ingest";
 import { seedLake } from "@/lib/lake/seed";
@@ -168,13 +170,24 @@ export async function callTool(
     case "validate_dashboard":
       return validateDashboardSpec(args.dashboard);
     case "preview_dashboard": {
-      const validation = validateDashboardSpec(args.dashboard);
-      if (!validation.valid) return validation;
+      const validation = validateAndNormalizeDashboardSpec(args.dashboard);
+      if (!validation.valid || !validation.spec) {
+        return { valid: false, findings: validation.findings };
+      }
+      const runtime = await validateDashboardRuntime(
+        validation.spec,
+        queryLake,
+      );
+      if (!runtime.valid) {
+        return { valid: false, findings: runtime.findings };
+      }
       return {
-        ...validation,
-        dashboard: adaptDashboardSpec(args.dashboard as DashboardSpec, {
+        valid: true,
+        findings: [],
+        dashboard: adaptDashboardSpec(validation.spec, {
           owner: "preview",
         }),
+        rowsByWidget: runtime.rowsByWidget,
       };
     }
     case "get_dashboard": {
@@ -186,33 +199,34 @@ export async function callTool(
     case "save_personal_dashboard": {
       const userId = String(args.userId ?? "").trim();
       if (!userId) throw new Error("userId is required");
-      const candidate = args.dashboard;
-      if (
-        typeof candidate === "object" &&
-        candidate !== null &&
-        "version" in candidate
-      ) {
-        const validation = validateDashboardSpec(candidate);
-        if (!validation.valid) return validation;
-        const spec = candidate as DashboardSpec;
-        const dashboardId =
-          spec.id ?? `personal-${userId}-${randomUUID().slice(0, 8)}`;
-        const existing = getDashboard(db, dashboardId);
-        if (existing && existing.owner !== userId) {
-          throw new Error("Dashboard is owned by another user");
-        }
-        const dashboard = adaptDashboardSpec(spec, {
-          id: dashboardId,
-          owner: userId,
-          forkedFrom: existing?.forkedFrom ?? null,
-        });
-        return {
-          ...validation,
-          dashboard: savePersonalDashboard(db, userId, dashboard),
-        };
+      const validation = validateAndNormalizeDashboardSpec(args.dashboard);
+      if (!validation.valid || !validation.spec) {
+        return { valid: false, findings: validation.findings };
       }
-      const dashboard = args.dashboard as Dashboard;
-      return savePersonalDashboard(db, userId, dashboard);
+      const dashboardId =
+        validation.spec.id ??
+        `personal-${userId}-${randomUUID().slice(0, 8)}`;
+      const existing = getDashboard(db, dashboardId);
+      if (existing && existing.owner !== userId) {
+        throw new Error("Dashboard is owned by another user");
+      }
+      const runtime = await validateDashboardRuntime(
+        validation.spec,
+        queryLake,
+      );
+      if (!runtime.valid) {
+        return { valid: false, findings: runtime.findings };
+      }
+      const dashboard = adaptDashboardSpec(validation.spec, {
+        id: dashboardId,
+        owner: userId,
+        forkedFrom: existing?.forkedFrom ?? null,
+      });
+      return {
+        valid: true,
+        findings: [],
+        dashboard: savePersonalDashboard(db, userId, dashboard),
+      };
     }
     case "request_publish_org": {
       const userId = String(args.userId ?? "").trim();

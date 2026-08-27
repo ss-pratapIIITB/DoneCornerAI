@@ -16,14 +16,14 @@ const RENDERER_WIDGET_TYPES: Record<
   WidgetType
 > = {
   kpi: "kpi",
-  variance_kpi: "kpi",
+  variance_kpi: "variance_kpi",
   bar: "bar",
-  stacked_bar: "bar",
+  stacked_bar: "stacked_bar",
   line: "line",
-  waterfall: "bar",
+  waterfall: "waterfall",
   pnl_table: "pnl_table",
-  exception_queue: "table",
-  markdown_insight: "table",
+  exception_queue: "exception_queue",
+  markdown_insight: "markdown_insight",
 };
 
 export function adaptDashboardWidget(spec: DashboardWidgetSpec): Widget {

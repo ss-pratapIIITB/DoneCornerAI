@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LakeChart } from "@/components/dashboard/LakeChart";
+import { GeneratedDashboardWidget } from "@/components/dashboard/GeneratedDashboardWidget";
 import { PinChartMenu } from "@/components/dashboard/PinChartMenu";
 import { PnlTable } from "@/components/dashboard/PnlTable";
 import { WidgetFrame, downloadCsv } from "@/components/dashboard/WidgetFrame";
@@ -301,7 +302,9 @@ export function CloseCanvas() {
           ))}
 
           {board?.widgets.map((w) =>
-            w.lake ? (
+            w.lake && w.primitive ? (
+              <GeneratedDashboardWidget key={w.id} widget={w} />
+            ) : w.lake ? (
               <PinnedLakeWidget key={w.id} widget={w} />
             ) : (
               <article key={w.id} className="widget-card">

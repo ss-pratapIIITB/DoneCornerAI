@@ -1,10 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import { getDashboard } from "@/lib/dashboards/store";
 import { callTool } from "@/mcp/tools";
+
+const queryLakeMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/lake/query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/lake/query")>()),
+  queryLake: queryLakeMock,
+}));
 
 function freshDb() {
   process.env.DONECORNER_DB = join(
@@ -61,6 +68,14 @@ function validSpec() {
 }
 
 describe("agent-designed dashboard DSL", () => {
+  beforeEach(() => {
+    queryLakeMock.mockReset();
+    queryLakeMock.mockResolvedValue([
+      { key: "2026-01", label: "2026-01", value: 100 },
+      { key: "2026-02", label: "2026-02", value: 110 },
+    ]);
+  });
+
   it("lists every governed primitive with a complete versioned contract", async () => {
     const result = (await callTool(freshDb(), "list_dashboard_primitives", {
       version: 1,
@@ -98,12 +113,16 @@ describe("agent-designed dashboard DSL", () => {
           primitive.drillBehavior.length > 0 &&
           primitive.size.minW > 0 &&
           primitive.size.maxW >= primitive.size.minW &&
-          primitive.export.png &&
+          typeof primitive.export.png === "boolean" &&
           primitive.accessibility.requiresTitle &&
           primitive.accessibility.requiresPurpose &&
           primitive.rendererVersion === 1,
       ),
     ).toBe(true);
+    expect(
+      result.primitives.find((primitive) => primitive.id === "markdown_insight")
+        ?.export,
+    ).toEqual({ csv: false, png: false });
   });
 
   it("accepts a live-query dashboard and preserves its rendering contract", async () => {
@@ -132,6 +151,9 @@ describe("agent-designed dashboard DSL", () => {
     };
 
     expect(preview.valid).toBe(true);
+    expect(queryLakeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ metric: "revenue", grain: "period" }),
+    );
     expect(preview.dashboard).toMatchObject({
       name: "Close signals",
       widgets: [
@@ -230,6 +252,59 @@ describe("agent-designed dashboard DSL", () => {
     expect(result.valid).toBe(false);
     expect(result.findings).not.toHaveLength(0);
     expect(result.dashboard).toBeUndefined();
+    expect(queryLakeMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects actual query results that exceed the point contract before preview", async () => {
+    queryLakeMock.mockResolvedValue(
+      Array.from({ length: 13 }, (_, index) => ({
+        key: String(index),
+        label: `Period ${index}`,
+        value: index,
+      })),
+    );
+
+    const result = (await callTool(freshDb(), "preview_dashboard", {
+      dashboard: validSpec(),
+    })) as {
+      valid: boolean;
+      findings: Array<{ code: string }>;
+      dashboard?: unknown;
+    };
+
+    expect(result.valid).toBe(false);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "actual_point_limit_exceeded" }),
+      ]),
+    );
+    expect(result.dashboard).toBeUndefined();
+  });
+
+  it("rejects malformed actual query rows before save and preserves the draft", async () => {
+    const db = freshDb();
+    const initial = (await callTool(db, "save_personal_dashboard", {
+      userId: "cfo",
+      dashboard: validSpec(),
+    })) as { dashboard: { id: string } };
+    queryLakeMock.mockResolvedValue([
+      { key: "2026-01", label: "2026-01", value: "not-a-number" },
+    ]);
+    const changed = validSpec();
+    changed.name = "Must not persist";
+
+    const result = (await callTool(db, "save_personal_dashboard", {
+      userId: "cfo",
+      dashboard: changed,
+    })) as { valid: boolean; findings: Array<{ code: string }> };
+
+    expect(result.valid).toBe(false);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "actual_data_shape_mismatch" }),
+      ]),
+    );
+    expect(getDashboard(db, initial.dashboard.id)?.name).toBe("Close signals");
   });
 
   it("rejects malformed metadata, unavailable fields, SQL, and JSX", async () => {
@@ -266,6 +341,114 @@ describe("agent-designed dashboard DSL", () => {
         expect.objectContaining({ code: "arbitrary_code_not_allowed" }),
       ]),
     );
+  });
+
+  it("accepts only executable lake metrics and valid filter runtime shapes", async () => {
+    const unsupportedMetric = validSpec();
+    unsupportedMetric.widgets[0].query.metric = "gross_margin_pct";
+    const invalidFilters = validSpec();
+    Object.assign(invalidFilters.widgets[0].query.filters, {
+      scenario: "forecast",
+      period: "2026-01",
+      account: [""],
+      company: ["Northstar"],
+    });
+
+    const metricResult = (await callTool(freshDb(), "validate_dashboard", {
+      dashboard: unsupportedMetric,
+    })) as { findings: Array<{ code: string }> };
+    const filterResult = (await callTool(freshDb(), "validate_dashboard", {
+      dashboard: invalidFilters,
+    })) as { findings: Array<{ code: string }> };
+
+    expect(metricResult.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "unsupported_metric" }),
+      ]),
+    );
+    expect(filterResult.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "invalid_filter_value" }),
+      ]),
+    );
+  });
+
+  it("requires unique widget identity, rationale, and bounded provenance identifiers", async () => {
+    const base = validSpec();
+    const dashboard = {
+      ...base,
+      widgets: [
+        {
+          ...base.widgets[0],
+          id: " repeated ",
+          whyThisVisualization: " ",
+          provenance: {
+            runId: " run-close-1 ",
+            eventIds: ["event-query-1", { raw: "forbidden" }],
+            artifactIds: ["x".repeat(129)],
+          },
+        },
+        {
+          ...base.widgets[0],
+          id: "repeated",
+          position: { x: 6, y: 0, w: 6, h: 4 },
+        },
+      ],
+    };
+
+    const result = (await callTool(freshDb(), "validate_dashboard", {
+      dashboard,
+    })) as { valid: boolean; findings: Array<{ code: string }> };
+
+    expect(result.valid).toBe(false);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "duplicate_widget_id" }),
+        expect.objectContaining({ code: "missing_visualization_rationale" }),
+        expect.objectContaining({ code: "invalid_provenance" }),
+      ]),
+    );
+  });
+
+  it("normalizes identity and provenance before preview adaptation", async () => {
+    const dashboard = validSpec();
+    dashboard.id = " personal-cfo-agent-board ";
+    dashboard.widgets[0].id = " revenue-trend ";
+    dashboard.widgets[0].provenance = {
+      runId: " run-close-1 ",
+      eventIds: [" event-query-1 "],
+      artifactIds: [" artifact-pack-1 "],
+    };
+
+    const result = (await callTool(freshDb(), "preview_dashboard", {
+      dashboard,
+    })) as {
+      dashboard: {
+        id: string;
+        widgets: Array<{
+          id: string;
+          provenance: {
+            runId: string;
+            eventIds: string[];
+            artifactIds: string[];
+          };
+        }>;
+      };
+    };
+
+    expect(result.dashboard).toMatchObject({
+      id: "personal-cfo-agent-board",
+      widgets: [
+        {
+          id: "revenue-trend",
+          provenance: {
+            runId: "run-close-1",
+            eventIds: ["event-query-1"],
+            artifactIds: ["artifact-pack-1"],
+          },
+        },
+      ],
+    });
   });
 
   it("saves a validated personal dashboard for only the requesting user", async () => {

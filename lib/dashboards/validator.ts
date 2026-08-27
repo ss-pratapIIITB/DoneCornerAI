@@ -3,33 +3,23 @@ import {
   DASHBOARD_DSL_VERSION,
   DASHBOARD_PRIMITIVE_IDS,
   DASHBOARD_RENDERER_VERSION,
+  type DashboardDataShape,
   type DashboardPosition,
   type DashboardPrimitiveId,
+  type DashboardSpec,
+  type DashboardWidgetSpec,
 } from "@/lib/dashboards/dsl";
+import {
+  isRecord,
+  normalizeBoundedString,
+  normalizeIdentifier,
+  normalizeLakeFilters,
+  normalizeProvenance,
+} from "@/lib/dashboards/guards";
 import { DASHBOARD_PRIMITIVES_V1 } from "@/lib/dashboards/primitives";
-import { LAKE_GRAINS, type LakeGrain } from "@/lib/lake/types";
 import { nextLakeGrain } from "@/lib/lake/drill";
-
-export const DASHBOARD_METRICS = [
-  "revenue",
-  "cogs",
-  "opex",
-  "sm",
-  "rd",
-  "ga",
-  "capex_tech",
-  "ap",
-  "net_income",
-  "cash_in",
-  "cash_out",
-  "gross_margin_pct",
-  "net_burn",
-  "runway_months",
-  "arr",
-  "nrr",
-] as const;
-
-export type DashboardMetric = (typeof DASHBOARD_METRICS)[number];
+import { isLakeMetric } from "@/lib/lake/metrics";
+import { LAKE_GRAINS, type LakeGrain } from "@/lib/lake/types";
 
 export type DashboardFindingCode =
   | "invalid_dashboard"
@@ -39,16 +29,24 @@ export type DashboardFindingCode =
   | "unsupported_metric"
   | "unsupported_grain"
   | "unsupported_field"
+  | "invalid_filter_value"
   | "arbitrary_code_not_allowed"
   | "incompatible_data_shape"
   | "excessive_points"
   | "missing_accessible_title"
   | "missing_accessible_purpose"
+  | "invalid_widget_id"
+  | "duplicate_widget_id"
+  | "missing_visualization_rationale"
   | "invalid_drill_path"
   | "invalid_size"
   | "layout_out_of_bounds"
   | "layout_overlap"
-  | "missing_provenance";
+  | "missing_provenance"
+  | "invalid_provenance"
+  | "query_execution_failed"
+  | "actual_data_shape_mismatch"
+  | "actual_point_limit_exceeded";
 
 export type DashboardValidationFinding = {
   code: DashboardFindingCode;
@@ -62,11 +60,9 @@ export type DashboardValidationResult = {
   findings: DashboardValidationFinding[];
 };
 
-type UnknownRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+export type DashboardSpecParseResult = DashboardValidationResult & {
+  spec?: DashboardSpec;
+};
 
 function finding(
   code: DashboardFindingCode,
@@ -76,14 +72,17 @@ function finding(
   return { code, path, message, severity: "error" };
 }
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
 function isPrimitiveId(value: unknown): value is DashboardPrimitiveId {
   return (
     typeof value === "string" &&
     DASHBOARD_PRIMITIVE_IDS.includes(value as DashboardPrimitiveId)
+  );
+}
+
+function isDataShape(value: unknown): value is DashboardDataShape {
+  return (
+    typeof value === "string" &&
+    DASHBOARD_DATA_SHAPES.includes(value as DashboardDataShape)
   );
 }
 
@@ -98,26 +97,20 @@ function positionFrom(value: unknown): DashboardPosition | null {
   if (!isRecord(value)) return null;
   const { x, y, w, h } = value;
   if (![x, y, w, h].every(Number.isInteger)) return null;
-  return {
-    x: x as number,
-    y: y as number,
-    w: w as number,
-    h: h as number,
-  };
+  return { x: x as number, y: y as number, w: w as number, h: h as number };
 }
 
 function hasValidDrillPath(
-  path: unknown,
+  value: unknown,
   queryGrain: unknown,
-  drillBehavior: "none" | "explicit_path",
-): boolean {
-  if (!Array.isArray(path) || !path.every(isLakeGrain)) return false;
-  if (drillBehavior === "none") return path.length === 0;
-  if (!isLakeGrain(queryGrain) || path[0] !== queryGrain) return false;
-  for (let index = 1; index < path.length; index += 1) {
-    if (nextLakeGrain(path[index - 1]) !== path[index]) return false;
-  }
-  return true;
+  behavior: "none" | "explicit_path",
+): value is LakeGrain[] {
+  if (!Array.isArray(value) || !value.every(isLakeGrain)) return false;
+  if (behavior === "none") return value.length === 0;
+  if (!isLakeGrain(queryGrain) || value[0] !== queryGrain) return false;
+  return value.slice(1).every(
+    (grain, index) => nextLakeGrain(value[index]) === grain,
+  );
 }
 
 function overlaps(a: DashboardPosition, b: DashboardPosition): boolean {
@@ -129,8 +122,9 @@ function overlaps(a: DashboardPosition, b: DashboardPosition): boolean {
   );
 }
 
-export function validateDashboardSpec(input: unknown): DashboardValidationResult {
-  const findings: DashboardValidationFinding[] = [];
+export function validateAndNormalizeDashboardSpec(
+  input: unknown,
+): DashboardSpecParseResult {
   if (!isRecord(input)) {
     return {
       valid: false,
@@ -144,6 +138,11 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
     };
   }
 
+  const findings: DashboardValidationFinding[] = [];
+  const name = normalizeBoundedString(input.name, 256);
+  const purpose = normalizeBoundedString(input.purpose, 1_000);
+  const dashboardId =
+    input.id === undefined ? undefined : normalizeIdentifier(input.id);
   if (input.version !== DASHBOARD_DSL_VERSION) {
     findings.push(
       finding(
@@ -153,19 +152,21 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
       ),
     );
   }
-  if (!isNonEmptyString(input.name) || !isNonEmptyString(input.purpose)) {
+  if (!name || !purpose || (input.id !== undefined && !dashboardId)) {
     findings.push(
       finding(
         "invalid_dashboard",
         "dashboard",
-        "Dashboard name and purpose are required metadata.",
+        "Dashboard id, name, and purpose must be bounded non-empty metadata.",
       ),
     );
   }
 
   const layout = isRecord(input.layout) ? input.layout : {};
   const columns =
-    Number.isInteger(layout.columns) && Number(layout.columns) > 0
+    Number.isInteger(layout.columns) &&
+    Number(layout.columns) > 0 &&
+    Number(layout.columns) <= 24
       ? Number(layout.columns)
       : 0;
   if (
@@ -176,10 +177,11 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
       finding(
         "invalid_dashboard",
         "dashboard.layout",
-        "Layout requires positive columns and compact or standard density.",
+        "Layout requires 1–24 columns and compact or standard density.",
       ),
     );
   }
+
   if (!Array.isArray(input.widgets)) {
     findings.push(
       finding(
@@ -190,11 +192,9 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
     );
   }
   const widgets = Array.isArray(input.widgets) ? input.widgets : [];
-  const positioned: Array<{
-    index: number;
-    id: string;
-    position: DashboardPosition;
-  }> = [];
+  const normalizedWidgets: DashboardWidgetSpec[] = [];
+  const positioned: Array<{ index: number; id: string; position: DashboardPosition }> = [];
+  const widgetIds = new Set<string>();
   const largestPointLimit = Math.max(
     ...DASHBOARD_PRIMITIVES_V1.map((primitive) => primitive.maxPoints),
   );
@@ -208,7 +208,30 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
           (candidate) => candidate.id === widget.primitive,
         )
       : undefined;
+    const widgetId = normalizeIdentifier(widget.id);
+    const title = normalizeBoundedString(widget.title, 256);
+    const widgetPurpose = normalizeBoundedString(widget.purpose, 1_000);
+    const rationale = normalizeBoundedString(widget.whyThisVisualization, 2_000);
 
+    if (!widgetId) {
+      findings.push(
+        finding(
+          "invalid_widget_id",
+          `${path}.id`,
+          "Widget id must be a bounded non-empty identifier.",
+        ),
+      );
+    } else if (widgetIds.has(widgetId)) {
+      findings.push(
+        finding(
+          "duplicate_widget_id",
+          `${path}.id`,
+          `Widget id ${widgetId} must be unique.`,
+        ),
+      );
+    } else {
+      widgetIds.add(widgetId);
+    }
     if (!primitive) {
       findings.push(
         finding(
@@ -227,11 +250,10 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
         finding(
           "arbitrary_code_not_allowed",
           path,
-          "Dashboard widgets may reference governed primitives and lake queries only.",
+          "Widgets may reference governed primitives and LakeQuery values only.",
         ),
       );
     }
-
     if (widget.rendererVersion !== DASHBOARD_RENDERER_VERSION) {
       findings.push(
         finding(
@@ -241,47 +263,46 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
         ),
       );
     }
-
-    if (!isNonEmptyString(widget.title)) {
+    if (!title) {
       findings.push(
         finding(
           "missing_accessible_title",
           `${path}.title`,
-          "An accessible widget title is required.",
+          "An accessible bounded widget title is required.",
         ),
       );
     }
-    if (!isNonEmptyString(widget.purpose)) {
+    if (!widgetPurpose) {
       findings.push(
         finding(
           "missing_accessible_purpose",
           `${path}.purpose`,
-          "An accessible widget purpose is required.",
+          "An accessible bounded widget purpose is required.",
+        ),
+      );
+    }
+    if (!rationale) {
+      findings.push(
+        finding(
+          "missing_visualization_rationale",
+          `${path}.whyThisVisualization`,
+          "A bounded visualization rationale is required.",
         ),
       );
     }
 
-    const globallyKnownShape =
-      typeof widget.dataShape === "string" &&
-      DASHBOARD_DATA_SHAPES.includes(
-        widget.dataShape as (typeof DASHBOARD_DATA_SHAPES)[number],
-      );
     if (
-      !globallyKnownShape ||
-      (primitive &&
-        !primitive.dataShapes.includes(
-          widget.dataShape as (typeof primitive.dataShapes)[number],
-        ))
+      !isDataShape(widget.dataShape) ||
+      (primitive && !primitive.dataShapes.includes(widget.dataShape))
     ) {
       findings.push(
         finding(
           "incompatible_data_shape",
           `${path}.dataShape`,
-          "The widget data shape is not supported by its primitive.",
+          "The data shape is not supported by this primitive.",
         ),
       );
     }
-
     const maxPoints = primitive?.maxPoints ?? largestPointLimit;
     if (
       !Number.isInteger(widget.pointLimit) ||
@@ -297,15 +318,12 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
       );
     }
 
-    if (
-      typeof query.metric !== "string" ||
-      !DASHBOARD_METRICS.includes(query.metric as DashboardMetric)
-    ) {
+    if (!isLakeMetric(query.metric)) {
       findings.push(
         finding(
           "unsupported_metric",
           `${path}.query.metric`,
-          `Metric ${String(query.metric)} is not supported.`,
+          `Metric ${String(query.metric)} is not supported by the live lake.`,
         ),
       );
     }
@@ -318,26 +336,15 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
         ),
       );
     }
-    const filters = isRecord(query.filters) ? query.filters : {};
-    const supportedFilters = new Set([
-      "group",
-      "vertical",
-      "company",
-      "category",
-      "product",
-      "period",
-      "account",
-      "scenario",
-    ]);
-    const unavailableFilter = Object.keys(filters).find(
-      (field) => !supportedFilters.has(field),
-    );
-    if (unavailableFilter) {
+    const filters = normalizeLakeFilters(query.filters, `${path}.query.filters`);
+    for (const issue of filters.issues) {
       findings.push(
         finding(
-          "unsupported_field",
-          `${path}.query.filters.${unavailableFilter}`,
-          `Filter field ${unavailableFilter} is not available in the lake query contract.`,
+          issue.message.includes("unavailable")
+            ? "unsupported_field"
+            : "invalid_filter_value",
+          issue.path,
+          issue.message,
         ),
       );
     }
@@ -354,7 +361,7 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
         finding(
           "invalid_drill_path",
           `${path}.drill.path`,
-          "Drill path must follow the supported lake hierarchy from the query grain.",
+          "Drill path must follow the lake hierarchy from the query grain.",
         ),
       );
     }
@@ -389,29 +396,16 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
         finding(
           "layout_out_of_bounds",
           `${path}.position`,
-          "Widget position must remain inside the dashboard column grid.",
+          "Widget position must remain inside the dashboard grid.",
         ),
       );
     }
     if (position) {
-      positioned.push({
-        index,
-        id: isNonEmptyString(widget.id) ? widget.id : `widget-${index}`,
-        position,
-      });
+      positioned.push({ index, id: widgetId ?? `widget-${index}`, position });
     }
 
-    const provenance = isRecord(widget.provenance) ? widget.provenance : {};
-    const eventIds = Array.isArray(provenance.eventIds)
-      ? provenance.eventIds.filter(isNonEmptyString)
-      : [];
-    const artifactIds = Array.isArray(provenance.artifactIds)
-      ? provenance.artifactIds.filter(isNonEmptyString)
-      : [];
-    if (
-      !isNonEmptyString(provenance.runId) ||
-      eventIds.length + artifactIds.length === 0
-    ) {
+    const provenance = normalizeProvenance(widget.provenance);
+    if (!isRecord(widget.provenance) || !widget.provenance.runId) {
       findings.push(
         finding(
           "missing_provenance",
@@ -419,6 +413,48 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
           "Run provenance plus at least one event or artifact is required.",
         ),
       );
+    } else if (!provenance) {
+      findings.push(
+        finding(
+          "invalid_provenance",
+          `${path}.provenance`,
+          "Every provenance value must be a bounded non-empty identifier.",
+        ),
+      );
+    }
+
+    if (
+      widgetId &&
+      primitive &&
+      title &&
+      widgetPurpose &&
+      rationale &&
+      isDataShape(widget.dataShape) &&
+      isLakeMetric(query.metric) &&
+      isLakeGrain(query.grain) &&
+      filters.value &&
+      hasValidDrillPath(drill.path, query.grain, primitive.drillBehavior) &&
+      position &&
+      provenance
+    ) {
+      normalizedWidgets.push({
+        id: widgetId,
+        primitive: primitive.id,
+        rendererVersion: DASHBOARD_RENDERER_VERSION,
+        title,
+        purpose: widgetPurpose,
+        whyThisVisualization: rationale,
+        dataShape: widget.dataShape,
+        pointLimit: Number(widget.pointLimit),
+        query: {
+          metric: query.metric,
+          grain: query.grain,
+          filters: filters.value,
+        },
+        drill: { path: [...drill.path] },
+        position: { ...position },
+        provenance,
+      });
     }
   });
 
@@ -436,5 +472,27 @@ export function validateDashboardSpec(input: unknown): DashboardValidationResult
     }
   }
 
-  return { valid: findings.length === 0, findings };
+  if (findings.length || !name || !purpose) {
+    return { valid: false, findings };
+  }
+  return {
+    valid: true,
+    findings: [],
+    spec: {
+      version: DASHBOARD_DSL_VERSION,
+      ...(dashboardId ? { id: dashboardId } : {}),
+      name,
+      purpose,
+      layout: {
+        columns,
+        density: layout.density as DashboardSpec["layout"]["density"],
+      },
+      widgets: normalizedWidgets,
+    },
+  };
+}
+
+export function validateDashboardSpec(input: unknown): DashboardValidationResult {
+  const { valid, findings } = validateAndNormalizeDashboardSpec(input);
+  return { valid, findings };
 }

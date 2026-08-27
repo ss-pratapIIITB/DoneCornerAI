@@ -13,6 +13,7 @@ type Props = {
   title: string;
   children: ReactNode;
   onExportCsv?: () => void;
+  allowPng?: boolean;
   extra?: ReactNode;
   defaultW?: number;
   defaultH?: number;
@@ -22,6 +23,7 @@ export function WidgetFrame({
   title,
   children,
   onExportCsv,
+  allowPng = true,
   extra,
   defaultW = 100,
   defaultH = 22,
@@ -117,9 +119,11 @@ export function WidgetFrame({
           Export CSV
         </button>
       ) : null}
-      <button type="button" onClick={exportPng}>
-        Export PNG
-      </button>
+      {allowPng ? (
+        <button type="button" onClick={exportPng}>
+          Export PNG
+        </button>
+      ) : null}
       <button
         ref={forLightbox ? closeButton : undefined}
         type="button"

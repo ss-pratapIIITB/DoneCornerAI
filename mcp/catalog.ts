@@ -194,7 +194,17 @@ export const MCP_TOOLS: McpToolDef[] = [
       type: "object",
       properties: {
         userId: { type: "string" },
-        dashboard: { type: "object" },
+        dashboard: {
+          type: "object",
+          properties: {
+            version: { type: "number", enum: [1] },
+            name: { type: "string" },
+            purpose: { type: "string" },
+            layout: { type: "object" },
+            widgets: { type: "array" },
+          },
+          required: ["version", "name", "purpose", "layout", "widgets"],
+        },
       },
       required: ["userId", "dashboard"],
     },

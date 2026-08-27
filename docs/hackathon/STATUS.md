@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Build (agentic ingestion + observable workspace)
 
-**Current step:** Observable ingestion and the unified agent workspace are implemented. Qodo High findings and the PR #11/#12 Medium follow-up batches are fixed and verified; re-review requested on both PRs before dashboard DSL.
+**Current step:** Slice 4 dashboard DSL is implemented with review-fix hardening; re-review pending before raising the stacked PR. Qodo High/Medium follow-ups on PRs #11/#12 remain queued.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -45,7 +45,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [x] Observable TrueForge run ledger + replay
 - [x] Agent-owned quarantine, inspection, mapping approval, and canonical load
 - [x] Unified Markdown agent workspace + attachments
-- [ ] Validated agent-designed dashboard DSL
+- [x] Validated agent-designed dashboard DSL
 - [ ] Editable CFO guidance + read-only assembled prompt
 
 ## Phase 4 — Hackathon evidence

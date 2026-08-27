@@ -8,7 +8,17 @@ import type {
 } from "@/lib/dashboards/dsl";
 import type { LakeGrain, LakeQuery } from "@/lib/lake/types";
 
-export type WidgetType = "kpi" | "bar" | "line" | "table" | "pnl_table";
+export type WidgetType =
+  | "kpi"
+  | "variance_kpi"
+  | "bar"
+  | "stacked_bar"
+  | "line"
+  | "waterfall"
+  | "table"
+  | "pnl_table"
+  | "exception_queue"
+  | "markdown_insight";
 
 export type WidgetLayout = { x?: number; y?: number; w: number; h: number };
 

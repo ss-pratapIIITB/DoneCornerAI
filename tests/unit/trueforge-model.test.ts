@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { closePackModel, closePackSpec } from "@/lib/trueforge/agent";
+import {
+  CLOSE_PACK_INSTRUCTIONS,
+  closePackModel,
+  closePackSpec,
+} from "@/lib/trueforge/agent";
 import { donecornerMcpUrl } from "@/lib/trueforge/harness";
 
 describe("closePackModel", () => {
@@ -21,6 +25,24 @@ describe("closePackModel", () => {
 
   it("does not require TrueForge skills that may be unconfigured", () => {
     expect(closePackSpec("openai/gpt-5-4-mini").skills ?? []).toEqual([]);
+  });
+
+  it("locks successful dashboard generation to validate, preview, then personal save", () => {
+    const validate = CLOSE_PACK_INSTRUCTIONS.indexOf("validate_dashboard");
+    const preview = CLOSE_PACK_INSTRUCTIONS.indexOf("preview_dashboard");
+    const save = CLOSE_PACK_INSTRUCTIONS.indexOf("save_personal_dashboard");
+    const publish = CLOSE_PACK_INSTRUCTIONS.indexOf("request_publish_org");
+
+    expect(validate).toBeGreaterThan(-1);
+    expect(preview).toBeGreaterThan(validate);
+    expect(save).toBeGreaterThan(preview);
+    expect(publish).toBeGreaterThan(save);
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(
+      /automatically save the successful preview as the requesting user's personal draft/i,
+    );
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(
+      /organization publish remains separate and approval-gated/i,
+    );
   });
 });
 
