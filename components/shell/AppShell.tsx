@@ -14,8 +14,11 @@ import { AgentRail, type AgentStatus } from "@/components/shell/AgentRail";
 import { ModeBar } from "@/components/shell/ModeBar";
 import { QueryBar } from "@/components/shell/QueryBar";
 import type { Dashboard } from "@/lib/dashboards/widgets";
+import type { LakeQuery } from "@/lib/lake/types";
 
 type Mode = "view" | "edit";
+
+export type AgentChart = { title: string; query: LakeQuery };
 
 type PortalValue = {
   mode: Mode;
@@ -25,6 +28,8 @@ type PortalValue = {
   refreshBoard: () => Promise<void>;
   requestPublish: () => Promise<void>;
   setAgent: (status: AgentStatus, detail: string) => void;
+  lastCharts: AgentChart[];
+  pinChart: (chart: AgentChart, boardId?: string) => Promise<void>;
 };
 
 const PortalContext = createContext<PortalValue | null>(null);
@@ -45,6 +50,24 @@ type Props = {
   children: React.ReactNode;
 };
 
+function NavGlyph({
+  kind,
+}: {
+  kind: "close" | "boards" | "lake" | "schema";
+}) {
+  const paths = {
+    close: "M4 15V9m5 6V5m5 10v-3m5 3V7",
+    boards: "M4 5h7v6H4zm9 0h7v6h-7zM4 13h7v6H4zm9 0h7v6h-7z",
+    lake: "M4 7c2-2 4-2 6 0s4 2 6 0 4-2 4-2M4 12c2-2 4-2 6 0s4 2 6 0 4-2 4-2M4 17c2-2 4-2 6 0s4 2 6 0 4-2 4-2",
+    schema: "M5 5h6v5H5zm8 0h6v5h-6zM5 14h6v5H5zm8 0h6v5h-6z",
+  };
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d={paths[kind]} fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 export function AppShell({ children }: Props) {
   const path = usePathname();
   const [mode, setMode] = useState<Mode>("view");
@@ -62,6 +85,8 @@ export function AppShell({ children }: Props) {
   const [pendingTf, setPendingTf] = useState<
     { threadId: string; toolCallId: string; name?: string }[]
   >([]);
+  const [lastCharts, setLastCharts] = useState<AgentChart[]>([]);
+  const [turns, setTurns] = useState<{ q: string; a: string }[]>([]);
 
   const setAgent = useCallback((status: AgentStatus, detail: string) => {
     setAgentStatus(status);
@@ -81,25 +106,30 @@ export function AppShell({ children }: Props) {
   }, [board?.id]);
 
   useEffect(() => {
-    void refreshBoard();
-    const rail = new URLSearchParams(window.location.search).get("rail");
-    if (rail === "waiting_approval") {
-      setAgentStatus("waiting_approval");
-      setAgentDetail("Publish will overwrite org Close with this personal board.");
-    }
-    const storedSession = localStorage.getItem(TF_SESSION);
-    if (storedSession) setTfSession(storedSession);
-    void (async () => {
-      const res = await fetch("/api/session");
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { reason?: string };
-        setQueryDisabled(true);
-        setQueryReason(body.reason ?? "TrueForge is not running.");
-        return;
+    const hydrate = window.setTimeout(() => {
+      void refreshBoard();
+      const rail = new URLSearchParams(window.location.search).get("rail");
+      if (rail === "waiting_approval") {
+        setAgentStatus("waiting_approval");
+        setAgentDetail("Publish will overwrite org Close with this personal board.");
       }
-      setQueryDisabled(false);
-      setQueryReason("");
-    })();
+      const storedSession = localStorage.getItem(TF_SESSION);
+      if (storedSession) setTfSession(storedSession);
+      void (async () => {
+        const res = await fetch("/api/session");
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as {
+            reason?: string;
+          };
+          setQueryDisabled(true);
+          setQueryReason(body.reason ?? "TrueForge is not running.");
+          return;
+        }
+        setQueryDisabled(false);
+        setQueryReason("");
+      })();
+    }, 100);
+    return () => window.clearTimeout(hydrate);
     // First paint only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -150,6 +180,7 @@ export function AppShell({ children }: Props) {
 
   async function ask(q: string) {
     setAgent("running", "Asking Close Pack…");
+    setLastCharts([]);
     const created = await fetch("/api/session", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -165,10 +196,13 @@ export function AppShell({ children }: Props) {
     const session = (await created.json()) as { id: string };
     localStorage.setItem(TF_SESSION, session.id);
     setTfSession(session.id);
+    const prompt = board
+      ? `${q}\n\nCurrent board id: ${board.id}. Use query_lake or query_sql and present_chart. userId is cfo.`
+      : q;
     const turn = await fetch("/api/session/turn", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId: session.id, message: q }),
+      body: JSON.stringify({ sessionId: session.id, message: prompt }),
     });
     if (!turn.ok) {
       setAgent("error", "The query turn failed.");
@@ -182,16 +216,31 @@ export function AppShell({ children }: Props) {
         toolCallId: string;
         name?: string;
       }[];
+      charts?: { title: string; query: Record<string, unknown> }[];
     };
     setPendingTf(result.pendingApprovals ?? []);
+    const answer = result.output?.trim() || "Turn finished.";
+    setTurns((prev) => [...prev, { q, a: answer }]);
+    if (result.charts?.length) {
+      setLastCharts(
+        result.charts.map((c) => ({
+          title: c.title,
+          query: {
+            metric: String(c.query.metric ?? "revenue"),
+            grain: String(c.query.grain ?? "period") as LakeQuery["grain"],
+            filters: (c.query.filters ?? { scenario: "actual" }) as LakeQuery["filters"],
+          },
+        })),
+      );
+    }
     setAgent(
       result.status === "waiting_approval" ? "waiting_approval" : result.status,
-      result.output || "Turn finished.",
+      answer,
     );
   }
 
   async function resolveRail(decision: "approved" | "denied") {
-    let applied = Boolean(publishId);
+    const hadPublish = Boolean(publishId);
     if (tfSession && pendingTf.length) {
       const approved = await fetch("/api/session/approve", {
         method: "POST",
@@ -205,32 +254,88 @@ export function AppShell({ children }: Props) {
           })),
         }),
       });
-      setPendingTf([]);
-      applied = applied || approved.ok;
-      if (!approved.ok && !publishId) {
-        setAgent("error", "Could not send the approval to TrueForge.");
+      const summary = (await approved.json().catch(() => ({}))) as {
+        status?: AgentStatus;
+        output?: string;
+        pendingApprovals?: {
+          threadId: string;
+          toolCallId: string;
+          name?: string;
+        }[];
+        error?: string;
+      };
+      setPendingTf(summary.pendingApprovals ?? []);
+      if (!approved.ok || summary.status === "error") {
+        setAgent("error", summary.output ?? summary.error ?? "Approval turn failed.");
+        return;
+      }
+      if (summary.status === "waiting_approval") {
+        setAgent(
+          "waiting_approval",
+          summary.output || "Still waiting for approval.",
+        );
         return;
       }
     }
     if (publishId) {
-      await fetch("/api/dashboards/publish", {
+      const resolved = await fetch("/api/dashboards/publish", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "resolve", id: publishId, decision }),
       });
+      if (!resolved.ok) {
+        setAgent("error", "Could not apply the publish decision.");
+        return;
+      }
     }
     setPublishId(null);
-    const orgTouched = applied && decision === "approved";
     setAgent(
       decision === "approved" ? "done" : "idle",
-      orgTouched
-        ? "Org Close updated."
-        : decision === "approved"
-          ? "Approval sent."
-          : "Publish denied. Personal draft kept.",
+      decision === "approved"
+        ? hadPublish
+          ? "Org Close updated."
+          : "Approval sent."
+        : "Publish denied. Personal draft kept.",
     );
     await refreshBoard();
   }
+
+  const pinChart = useCallback(
+    async (chart: AgentChart, boardId?: string) => {
+      if (mode !== "edit") {
+        throw new Error("Switch to Edit before pinning a chart.");
+      }
+      let target = board;
+      if (boardId) {
+        const res = await fetch(`/api/dashboards?id=${encodeURIComponent(boardId)}`);
+        if (res.ok) target = (await res.json()) as Dashboard;
+      }
+      if (!target || target.owner === "org") {
+        throw new Error("Choose a personal dashboard before pinning.");
+      }
+      const next = {
+        ...target,
+        widgets: [
+          ...target.widgets,
+          {
+            id: `w-agent-${crypto.randomUUID().slice(0, 8)}`,
+            type: "bar" as const,
+            title: chart.title,
+            query: {
+              metric: "revenue" as const,
+              grain: "period" as const,
+              filters: { scenario: "actual" as const },
+            },
+            note: "Pinned from agent",
+            lake: chart.query,
+          },
+        ],
+      };
+      await saveBoard(next);
+      setAgent("done", `Pinned “${chart.title}” to ${next.name}.`);
+    },
+    [board, mode, saveBoard, setAgent],
+  );
 
   const value = useMemo(
     () => ({
@@ -241,27 +346,54 @@ export function AppShell({ children }: Props) {
       refreshBoard,
       requestPublish,
       setAgent,
+      lastCharts,
+      pinChart,
     }),
-    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, setAgent],
+    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, setAgent, lastCharts, pinChart],
   );
+
+  const routeLabel =
+    path === "/boards" ? "My boards" : path === "/schema" ? "Schema" : "Close signal room";
 
   return (
     <PortalContext.Provider value={value}>
       <div className="app-shell" data-mode={mode}>
         <nav className="rail" aria-label="Primary">
-          <p className="brand">DoneCornerAI</p>
-          <Link href="/" className={path === "/" ? "is-on" : ""}>
-            Close
+          <p className="brand" aria-label="DoneCornerAI">
+            DC
+          </p>
+          <Link href="/" className={path === "/" ? "is-on" : ""} title="Close">
+            <NavGlyph kind="close" />
+            <span>Close</span>
           </Link>
-          <Link href="/boards" className={path === "/boards" ? "is-on" : ""}>
-            My boards
+          <Link
+            href="/boards"
+            className={path === "/boards" ? "is-on" : ""}
+            title="My boards"
+          >
+            <NavGlyph kind="boards" />
+            <span>Boards</span>
           </Link>
-          <Link href="/schema" className={path === "/schema" ? "is-on" : ""}>
-            Schema
+          <Link href="/" title="Lake">
+            <NavGlyph kind="lake" />
+            <span>Lake</span>
           </Link>
+          <Link
+            href="/schema"
+            className={path === "/schema" ? "is-on" : ""}
+            title="Schema"
+          >
+            <NavGlyph kind="schema" />
+            <span>Schema</span>
+          </Link>
+          <p className="rail-user">CFO</p>
         </nav>
         <div className="main-col">
           <header className="topbar">
+            <div className="route-context">
+              <span>Northstar Group</span>
+              <strong>{routeLabel}</strong>
+            </div>
             <ModeBar
               mode={mode}
               onChange={(next) => {
@@ -286,6 +418,11 @@ export function AppShell({ children }: Props) {
         <AgentRail
           status={agentStatus}
           detail={agentDetail}
+          turns={turns}
+          pendingActions={[
+            ...(publishId ? ["Publish board"] : []),
+            ...pendingTf.map((action) => action.name ?? "Sensitive tool action"),
+          ]}
           onApprove={() => void resolveRail("approved")}
           onDeny={() => void resolveRail("denied")}
         />

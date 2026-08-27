@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-27T15:04:25Z",
+  "title": "Design System: DoneCornerAI Signal Room",
+  "extensions": {
+    "colorMeta": {
+      "operations-ink": {
+        "role": "neutral",
+        "displayName": "Operations Ink",
+        "tonalRamp": ["oklch(15% 0.015 250)", "oklch(27% 0.015 250)", "oklch(39% 0.015 250)", "oklch(51% 0.015 250)", "oklch(63% 0.015 250)", "oklch(75% 0.015 250)", "oklch(87% 0.015 250)", "oklch(95% 0.015 250)"]
+      },
+      "operations-paper": {
+        "role": "neutral",
+        "displayName": "Operations Paper",
+        "tonalRamp": ["oklch(15% 0.01 250)", "oklch(27% 0.01 250)", "oklch(39% 0.01 250)", "oklch(51% 0.01 250)", "oklch(63% 0.01 250)", "oklch(75% 0.01 250)", "oklch(87% 0.01 250)", "oklch(95% 0.01 250)"]
+      },
+      "operations-panel": {
+        "role": "neutral",
+        "displayName": "Operations Panel",
+        "tonalRamp": ["oklch(15% 0.02 250)", "oklch(27% 0.02 250)", "oklch(39% 0.02 250)", "oklch(51% 0.02 250)", "oklch(63% 0.02 250)", "oklch(75% 0.02 250)", "oklch(87% 0.02 250)", "oklch(95% 0.02 250)"]
+      },
+      "operations-surface": {
+        "role": "neutral",
+        "displayName": "Operations Surface",
+        "tonalRamp": ["oklch(15% 0.018 250)", "oklch(27% 0.018 250)", "oklch(39% 0.018 250)", "oklch(51% 0.018 250)", "oklch(63% 0.018 250)", "oklch(75% 0.018 250)", "oklch(87% 0.018 250)", "oklch(95% 0.018 250)"]
+      },
+      "operations-surface-raised": {
+        "role": "neutral",
+        "displayName": "Raised Operations Surface",
+        "tonalRamp": ["oklch(15% 0.025 250)", "oklch(27% 0.025 250)", "oklch(39% 0.025 250)", "oklch(51% 0.025 250)", "oklch(63% 0.025 250)", "oklch(75% 0.025 250)", "oklch(87% 0.025 250)", "oklch(95% 0.025 250)"]
+      },
+      "hard-line": {
+        "role": "neutral",
+        "displayName": "Hard Line",
+        "tonalRamp": ["oklch(15% 0.03 250)", "oklch(27% 0.03 250)", "oklch(39% 0.03 250)", "oklch(51% 0.03 250)", "oklch(63% 0.03 250)", "oklch(75% 0.03 250)", "oklch(87% 0.03 250)", "oklch(95% 0.03 250)"]
+      },
+      "signal-orange": {
+        "role": "primary",
+        "displayName": "Signal Orange",
+        "tonalRamp": ["oklch(15% 0.15 47)", "oklch(27% 0.15 47)", "oklch(39% 0.15 47)", "oklch(51% 0.15 47)", "oklch(63% 0.15 47)", "oklch(75% 0.15 47)", "oklch(87% 0.15 47)", "oklch(95% 0.15 47)"]
+      },
+      "muted-data": {
+        "role": "neutral",
+        "displayName": "Muted Data",
+        "tonalRamp": ["oklch(15% 0.025 250)", "oklch(27% 0.025 250)", "oklch(39% 0.025 250)", "oklch(51% 0.025 250)", "oklch(63% 0.025 250)", "oklch(75% 0.025 250)", "oklch(87% 0.025 250)", "oklch(95% 0.025 250)"]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Danger Red",
+        "tonalRamp": ["oklch(15% 0.19 25)", "oklch(27% 0.19 25)", "oklch(39% 0.19 25)", "oklch(51% 0.19 25)", "oklch(63% 0.19 25)", "oklch(75% 0.19 25)", "oklch(87% 0.19 25)", "oklch(95% 0.19 25)"]
+      },
+      "focus": {
+        "role": "secondary",
+        "displayName": "Focus Amber",
+        "tonalRamp": ["oklch(15% 0.1 75)", "oklch(27% 0.1 75)", "oklch(39% 0.1 75)", "oklch(51% 0.1 75)", "oklch(63% 0.1 75)", "oklch(75% 0.1 75)", "oklch(87% 0.1 75)", "oklch(95% 0.1 75)"]
+      },
+      "chart-blue": {
+        "role": "secondary",
+        "displayName": "Chart Blue",
+        "tonalRamp": ["oklch(15% 0.18 260)", "oklch(27% 0.18 260)", "oklch(39% 0.18 260)", "oklch(51% 0.18 260)", "oklch(63% 0.18 260)", "oklch(75% 0.18 260)", "oklch(87% 0.18 260)", "oklch(95% 0.18 260)"]
+      },
+      "positive": {
+        "role": "secondary",
+        "displayName": "Positive Green",
+        "tonalRamp": ["oklch(15% 0.14 155)", "oklch(27% 0.14 155)", "oklch(39% 0.14 155)", "oklch(51% 0.14 155)", "oklch(63% 0.14 155)", "oklch(75% 0.14 155)", "oklch(87% 0.14 155)", "oklch(95% 0.14 155)"]
+      },
+      "analytic-cyan": {
+        "role": "secondary",
+        "displayName": "Analytic Cyan",
+        "tonalRamp": ["oklch(15% 0.12 205)", "oklch(27% 0.12 205)", "oklch(39% 0.12 205)", "oklch(51% 0.12 205)", "oklch(63% 0.12 205)", "oklch(75% 0.12 205)", "oklch(87% 0.12 205)", "oklch(95% 0.12 205)"]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Operational Headline",
+        "purpose": "Board identity and major surface headings."
+      },
+      "signal": {
+        "displayName": "Primary Signal",
+        "purpose": "The top-ranked exception statement."
+      },
+      "numeric": {
+        "displayName": "Material Number",
+        "purpose": "Signal-strip KPIs and close figures."
+      },
+      "body": {
+        "displayName": "Interface Body",
+        "purpose": "Controls, explanations, and agent responses."
+      },
+      "label": {
+        "displayName": "Instrument Label",
+        "purpose": "Uppercase context, state, and metadata."
+      },
+      "control": {
+        "displayName": "Primary Control",
+        "purpose": "Mode, query, load, publish, and approval actions."
+      },
+      "instrument": {
+        "displayName": "Compact Instrument",
+        "purpose": "Export, fullscreen, breadcrumb, pin, and widget actions."
+      }
+    },
+    "breakpoints": [
+      {
+        "name": "agent-stack",
+        "value": "1180px",
+        "purpose": "Moves the persistent agent rail below the main work field."
+      },
+      {
+        "name": "mobile-operations",
+        "value": "780px",
+        "purpose": "Collapses the shell, prioritizes the exception queue, and fixes the collapsible agent bar to the bottom."
+      }
+    ],
+    "motion": [
+      {
+        "name": "agent-running-pulse",
+        "value": "1.4s ease-in-out infinite",
+        "purpose": "Restrained opacity pulse for the Running agent status."
+      },
+      {
+        "name": "reduced-motion-duration",
+        "value": "0.01ms",
+        "purpose": "Effectively removes animation and transition duration when reduced motion is requested."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Signal Action",
+      "kind": "button",
+      "refersTo": "signal-action",
+      "description": "Primary operational action for loading, asking, publishing, or approving.",
+      "html": "<button class=\"ds-signal-action\" type=\"button\">APPROVE PUBLISH</button>",
+      "css": ".ds-signal-action { min-height: 2.3rem; padding: 0.45rem 0.85rem; border: 1px solid var(--gold); border-radius: 0; background: var(--gold); color: var(--ink); font: 600 0.75rem \"IBM Plex Sans\", sans-serif; cursor: pointer; } .ds-signal-action:hover:not(:disabled) { filter: brightness(1.08); } .ds-signal-action:active:not(:disabled) { filter: brightness(0.96); } .ds-signal-action:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; } .ds-signal-action:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Instrument Action",
+      "kind": "button",
+      "refersTo": "instrument-action",
+      "description": "Compact secondary control for export, drill, pin, and fullscreen operations.",
+      "html": "<button class=\"ds-instrument-action\" type=\"button\">EXPORT CSV</button>",
+      "css": ".ds-instrument-action { padding: 0.3rem 0.45rem; border: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--muted); font: 500 0.65rem \"IBM Plex Sans\", sans-serif; cursor: pointer; } .ds-instrument-action:hover { color: var(--paper); border-color: #475463; } .ds-instrument-action:active { background: var(--surface-raised); } .ds-instrument-action:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Contextual Query",
+      "kind": "input",
+      "refersTo": "query-field",
+      "description": "Persistent close-pack query field paired with one signal action.",
+      "html": "<form class=\"ds-query\"><label class=\"ds-query-label\" for=\"ds-query-input\">Ask the close pack</label><input id=\"ds-query-input\" placeholder=\"Ask why S&M is over budget…\"><button type=\"submit\">ASK</button></form>",
+      "css": ".ds-query { display: flex; gap: 0.5rem; font-family: \"IBM Plex Sans\", sans-serif; } .ds-query-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .ds-query input { min-width: 16rem; min-height: 2.35rem; flex: 1; padding: 0.45rem 0.7rem; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--paper); caret-color: var(--gold); font: inherit; } .ds-query button { padding: 0.45rem 1.1rem; border: 1px solid var(--gold); border-radius: 0; background: var(--gold); color: var(--ink); font: 600 0.75rem \"IBM Plex Sans\", sans-serif; cursor: pointer; } .ds-query :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; } .ds-query :disabled { opacity: 0.55; cursor: not-allowed; }"
+    },
+    {
+      "name": "View Edit Mode",
+      "kind": "nav",
+      "description": "Explicit two-state control that keeps safe viewing distinct from mutation.",
+      "html": "<div class=\"ds-mode\" role=\"group\" aria-label=\"Portal mode\"><button class=\"ds-mode-on\" aria-pressed=\"true\">VIEW</button><button aria-pressed=\"false\">EDIT</button></div>",
+      "css": ".ds-mode { display: inline-flex; border: 1px solid var(--line); border-radius: 0; background: transparent; } .ds-mode button { min-width: 3.2rem; padding: 0.45rem 0.65rem; border: 0; border-radius: 0; background: transparent; color: var(--muted); font: 500 0.75rem \"IBM Plex Sans\", sans-serif; cursor: pointer; } .ds-mode button:hover { background: var(--surface-raised); color: var(--paper); } .ds-mode button.ds-mode-on { background: var(--paper); color: var(--ink); } .ds-mode button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Exception Queue Row",
+      "kind": "custom",
+      "description": "Ranked financial exception with evidence and a direct path into the lake.",
+      "html": "<button class=\"ds-exception\" type=\"button\"><span class=\"ds-exception-rank\">01</span><span><strong>S&amp;M</strong><small>$1.4M actual</small></span><em>+12.6%</em></button>",
+      "css": ".ds-exception { display: grid; width: 100%; grid-template-columns: 1.8rem 1fr auto; gap: 0.55rem; align-items: center; padding: 0.95rem 0.75rem; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--paper); text-align: left; font-family: \"IBM Plex Sans\", sans-serif; cursor: pointer; } .ds-exception:hover { background: var(--surface-raised); } .ds-exception:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; } .ds-exception-rank { color: var(--muted); font-size: 0.65rem; } .ds-exception strong { display: block; font-size: 0.78rem; text-transform: uppercase; } .ds-exception small { display: block; margin-top: 0.2rem; color: var(--muted); font-size: 0.65rem; } .ds-exception em { color: var(--gold); font-size: 0.76rem; font-style: normal; font-weight: 600; }"
+    },
+    {
+      "name": "Widget Frame",
+      "kind": "card",
+      "refersTo": "widget-frame",
+      "description": "Flat, hard-lined analytical container with compact instrument actions and a resize affordance.",
+      "html": "<article class=\"ds-widget\"><header><h3>Revenue · period</h3><button type=\"button\">FULL SCREEN</button></header><div class=\"ds-widget-body\">Navigable chart</div><button class=\"ds-resize\" type=\"button\" aria-label=\"Resize widget\" title=\"Drag to resize, or use arrow keys\"></button></article>",
+      "css": ".ds-widget { position: relative; min-height: 14rem; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--paper); font-family: \"IBM Plex Sans\", sans-serif; } .ds-widget header { display: flex; min-height: 3.1rem; padding: 0.65rem 0.85rem; align-items: center; justify-content: space-between; gap: 0.75rem; border-bottom: 1px solid var(--line); } .ds-widget h3 { margin: 0; font-size: 0.78rem; font-weight: 600; } .ds-widget header button { padding: 0.3rem 0.45rem; border: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--muted); font: 500 0.65rem \"IBM Plex Sans\", sans-serif; } .ds-widget header button:hover { color: var(--paper); } .ds-widget :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; } .ds-widget-body { padding: 0.75rem 0.85rem 0.9rem; color: var(--muted); } .ds-resize { position: absolute; right: 0.35rem; bottom: 0.35rem; width: 2.75rem; height: 2.75rem; border: 0; background: transparent; cursor: nwse-resize; } .ds-resize::after { content: \"\"; position: absolute; right: 0; bottom: 0; width: 0.7rem; height: 0.7rem; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); }"
+    },
+    {
+      "name": "Agent Approval State",
+      "kind": "custom",
+      "description": "Visible agent status and explicit human decision before irreversible publication.",
+      "html": "<aside class=\"ds-agent\"><header><h2>TrueForge agent</h2><span data-status=\"waiting_approval\">WAITING FOR APPROVAL</span></header><p><strong>Publish board</strong> requires your approval.</p><button class=\"ds-approve\" type=\"button\">APPROVE PUBLISH</button><button class=\"ds-deny\" type=\"button\">DENY PUBLISH</button></aside>",
+      "css": ".ds-agent { padding: 1rem; border: 1px solid var(--line); border-radius: 0; background: var(--panel); color: var(--paper); font-family: \"IBM Plex Sans\", sans-serif; } .ds-agent header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; } .ds-agent h2 { margin: 0; font-size: 0.88rem; } .ds-agent [data-status] { padding: 0.2rem 0.45rem; border: 1px solid var(--gold); border-radius: 0; background: var(--gold); color: var(--ink); font-size: 0.61rem; letter-spacing: 0.06em; } .ds-agent p { color: var(--muted); font-size: 0.78rem; line-height: 1.55; } .ds-agent button { display: block; width: 100%; min-height: 2.1rem; margin-top: 0.45rem; border-radius: 0; font: 600 0.72rem \"IBM Plex Sans\", sans-serif; cursor: pointer; } .ds-approve { border: 1px solid var(--gold); background: var(--gold); color: var(--ink); } .ds-deny { border: 1px solid var(--danger); background: transparent; color: var(--danger); } .ds-agent button:hover { filter: brightness(1.08); } .ds-agent button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Fullscreen Widget Dialog",
+      "kind": "custom",
+      "description": "Native full-viewport analytical focus layer that retains widget controls.",
+      "html": "<dialog class=\"ds-dialog\" open aria-label=\"Revenue by period\"><article><header><h3>Revenue · period</h3><button type=\"button\">CLOSE</button></header><div class=\"ds-dialog-body\">Fullscreen navigable chart</div></article></dialog>",
+      "css": ".ds-dialog { width: 100vw; max-width: none; height: 100vh; max-height: none; margin: 0; padding: 0; border: 0; background: rgba(4, 7, 10, 0.92); color: var(--paper); font-family: \"IBM Plex Sans\", sans-serif; } .ds-dialog::backdrop { background: rgba(4, 7, 10, 0.92); } .ds-dialog article { width: min(96vw, 88rem); margin: 2vh auto; border: 1px solid var(--line); border-radius: 0; background: var(--surface); } .ds-dialog header { display: flex; min-height: 3.1rem; padding: 0.65rem 0.85rem; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); } .ds-dialog h3 { margin: 0; font-size: 0.78rem; } .ds-dialog button { padding: 0.3rem 0.45rem; border: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--muted); font: 500 0.65rem \"IBM Plex Sans\", sans-serif; } .ds-dialog button:hover { color: var(--paper); } .ds-dialog button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; } .ds-dialog-body { min-height: 28rem; padding: 1rem; color: var(--muted); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Signal Room",
+    "overview": "DoneCornerAI is a near-black operations field where ranked financial exceptions carry more visual authority than generic totals. Signal orange is scarce and operational: it marks the primary exception, active control, agent question, or action that demands attention. Hard hairlines, compact instruments, and dense tabular numbers make the interface feel like a live close-review console rather than a card dashboard.\n\nThe system is direct, financially literate, and calm under pressure. It exposes data lineage, agent activity, and irreversible approval as visible working states. The chosen world rejects soft consumer-dashboard decoration and reserves expressive hierarchy for evidence, status, and action.",
+    "keyCharacteristics": [
+      "Exception-first hierarchy instead of equal-weight metric cards.",
+      "Near-black flat surfaces separated by tone and hard hairlines.",
+      "Signal orange used for priority, active state, and controlled action.",
+      "Dense IBM Plex Sans typography with tabular financial numerals.",
+      "Square, compact controls with explicit keyboard focus.",
+      "Observable agent work and unmistakable human approval."
+    ],
+    "rules": [
+      {
+        "name": "The Signal Scarcity Rule",
+        "body": "Signal orange identifies priority or action; never wash large passive regions with it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Semantic Channel Rule",
+        "body": "Blue, green, cyan, danger, and focus colors retain their assigned analytical or state meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Numbers Align Rule",
+        "body": "Financial values use tabular numerals and right alignment wherever comparison is the task.",
+        "section": "typography"
+      },
+      {
+        "name": "The Exception Speaks First Rule",
+        "body": "The primary exception may outrank the page title; routine totals may not.",
+        "section": "typography"
+      },
+      {
+        "name": "The Operational Density Rule",
+        "body": "Preserve compact controls and close spatial relationships on desktop; increase target size, not decorative whitespace, on mobile.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Field Rule",
+        "body": "Never introduce card shadows, glows, glass effects, or soft elevation; use tone and borders to establish depth.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Hard-Line Rule",
+        "body": "Structural UI stays square; rounded silhouettes are exceptional and role-specific.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do lead operational surfaces with ranked exceptions and traceable evidence.",
+      "Do separate flat regions with the established tonal sequence and hard hairlines.",
+      "Do keep agent status, pending action, and approval controls visible at the moment of consequence.",
+      "Do preserve keyboard focus, native dialog focus return, keyboard resizing, and mobile target sizing.",
+      "Do keep chart marks and P&L cells directly navigable."
+    ],
+    "donts": [
+      "Don't revert the Signal Room to an equal-weight generic card dashboard.",
+      "Don't add shadows, glows, glassmorphism, or soft rounded containers.",
+      "Don't use signal orange as broad decoration or for passive information.",
+      "Don't hide publication approval in a transcript, toast, or collapsed mobile panel.",
+      "Don't promote the Close surface's exact signal-strip composition into a universal layout requirement."
+    ]
+  }
+}

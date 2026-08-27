@@ -101,7 +101,7 @@ export type SandboxCleanResult = {
 function runChild(scriptPath: string, csvPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [scriptPath, csvPath], {
-      env: { PATH: process.env.PATH },
+      env: { ...process.env, PATH: process.env.PATH },
       signal: AbortSignal.timeout(10_000),
     });
     let out = "";

@@ -18,7 +18,6 @@ let endingArr = mrr * 12;
 let cashBal = 8_400_000;
 
 for (const [i, period] of periods.entries()) {
-  const growth = 0.045;
   const newMrr = mrr * 0.05;
   const expansionMrr = mrr * 0.02;
   const contractionMrr = mrr * 0.008;

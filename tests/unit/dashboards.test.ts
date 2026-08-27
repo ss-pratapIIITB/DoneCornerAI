@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
+  createPersonalDashboard,
   ensureOrgClose,
   forkOrgToPersonal,
   getDashboard,
@@ -47,6 +48,16 @@ describe("dashboards", () => {
     savePersonalDashboard(db, "cfo", next);
     expect(getDashboard(db, personal.id)?.widgets).toHaveLength(1);
     expect(getDashboard(db, "org-close")?.widgets).toHaveLength(0);
+  });
+
+  it("creates a named personal board that is not the org fork", () => {
+    const db = freshDb();
+    ensureOrgClose(db);
+    const extra = createPersonalDashboard(db, "cfo", "AP watch");
+    expect(extra.name).toBe("AP watch");
+    expect(extra.owner).toBe("cfo");
+    expect(extra.forkedFrom).toBeNull();
+    expect(extra.id).not.toBe("org-close");
   });
 
   it("forbids viewer saves", () => {

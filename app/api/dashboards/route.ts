@@ -1,5 +1,6 @@
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
+  createPersonalDashboard,
   ensureOrgClose,
   forkOrgToPersonal,
   getDashboard,
@@ -33,6 +34,15 @@ export async function POST(req: Request): Promise<Response> {
     if (!user.canEdit) throw new ForbiddenError();
     const db = getDb();
     migrate(db);
+    const body = (await req.json().catch(() => ({}))) as {
+      action?: string;
+      name?: string;
+    };
+    if (body.action === "create") {
+      return Response.json(
+        createPersonalDashboard(db, user.id, body.name ?? "Untitled board"),
+      );
+    }
     return Response.json(forkOrgToPersonal(db, user.id));
   } catch (err) {
     return jsonError(err);

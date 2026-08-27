@@ -30,6 +30,9 @@ coverage/
 # Local agent skills (installed on this machine; not published)
 .cursor/skills/
 
+# Generated lake files (catalog lives in Postgres)
+data/lake/raw/**/*.csv
+
 test-results/
 playwright-report/
 blob-report/

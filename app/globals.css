@@ -54,7 +54,7 @@ button:hover:not(:disabled),
 
 .app-shell {
   display: grid;
-  grid-template-columns: 13rem minmax(0, 1fr) 16rem;
+  grid-template-columns: 12rem minmax(0, 1fr) minmax(18rem, 22rem);
   min-height: 100vh;
 }
 
@@ -194,14 +194,54 @@ button:hover:not(:disabled),
   max-width: 42rem;
 }
 
+.meta {
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+}
+
 .error {
   color: var(--danger);
 }
 
 .agent-rail {
-  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-height: 100vh;
+  padding: 1.25rem 1rem 1.5rem;
   border-left: 1px solid var(--line);
   background: var(--panel);
+}
+
+.agent-transcript {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0.85rem 0 0;
+  padding-right: 0.25rem;
+}
+
+.turn {
+  margin: 0 0 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.turn-q {
+  margin: 0 0 0.35rem;
+  color: var(--gold);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.turn-a,
+.agent-detail {
+  margin: 0;
+  color: var(--paper);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .agent-rail-head {
@@ -426,7 +466,166 @@ button:hover:not(:disabled),
   color: var(--paper);
 }
 
+.close-board {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
 
+.widget-frame {
+  position: relative;
+  background: #161c24;
+  border: 1px solid var(--line);
+  padding: 0.85rem 1rem 1.35rem;
+}
+
+.widget-frame-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.widget-frame-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.widget-frame-actions,
+.pin-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.widget-frame-actions button,
+.pin-menu button {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--ink);
+  background: var(--gold);
+  border: 0;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+}
+
+.widget-frame-actions button.ghost,
+.pin-menu button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.pin-menu label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.pin-menu select,
+.pin-menu input {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--paper);
+  background: #10141a;
+  border: 1px solid var(--line);
+  padding: 0.25rem 0.4rem;
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0.15rem;
+  bottom: 0.15rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  padding: 0;
+  border: 0;
+  cursor: nwse-resize;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--gold) 50%) no-repeat;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(8, 10, 14, 0.82);
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.lightbox-card {
+  width: min(96vw, 72rem);
+  height: min(92vh, 48rem);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.lightbox-body {
+  min-height: 28rem;
+}
+
+.pnl-wrap {
+  overflow: auto;
+  max-height: 28rem;
+}
+
+.pnl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.pnl-table th,
+.pnl-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.35rem 0.5rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pnl-table th:first-child,
+.pnl-table td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: #161c24;
+}
+
+.pnl-table button {
+  font: inherit;
+  color: var(--paper);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.pnl-table thead button {
+  color: var(--gold);
+}
+
+.board-open {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  background: transparent;
+  color: var(--paper);
+  text-align: left;
+  font: inherit;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
 
 @media (max-width: 900px) {
   .app-shell {

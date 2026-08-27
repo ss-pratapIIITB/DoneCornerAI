@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDb, migrate } from "@/lib/db/sqlite";
+import { createArtifact } from "@/lib/artifacts/store";
 import { callTool } from "@/mcp/tools";
 
 function freshDb() {
@@ -75,7 +76,7 @@ describe("MCP tools", () => {
     expect(orgAfter.widgets).toHaveLength(0);
   });
 
-  it("request_publish_org overwrites org Close after approval", async () => {
+  it("request_publish_org queues pending and does not overwrite org Close", async () => {
     const db = freshDb();
     const personal = (await callTool(db, "save_personal_dashboard", {
       userId: "cfo",
@@ -99,13 +100,18 @@ describe("MCP tools", () => {
       userId: "cfo",
       personalId: personal.id,
     });
-    expect(result).toMatchObject({ state: "approved" });
+    expect(result).toMatchObject({ state: "pending" });
     const orgAfter = (await callTool(db, "get_dashboard", { id: "org-close" })) as {
       widgets: { id: string }[];
     };
-    expect(orgAfter.widgets).toEqual([
-      expect.objectContaining({ id: "w-pub" }),
-    ]);
+    expect(orgAfter.widgets).toHaveLength(0);
+  });
+
+  it("request_publish_org requires userId", async () => {
+    const db = freshDb();
+    await expect(
+      callTool(db, "request_publish_org", { personalId: "personal-cfo-pub" }),
+    ).rejects.toThrow(/userId/i);
   });
 
   it("upload_close_file rejects when sandbox is off", async () => {
@@ -131,6 +137,53 @@ describe("MCP tools", () => {
     })) as { storedPath: string; instruction: string };
     expect(result.storedPath).toContain("pnl.csv");
     expect(result.instruction).toMatch(/source=upload/);
+  });
+
+  it("inspects an artifact handle and proposes an approval-bound mapping", async () => {
+    process.env.DONECORNER_UPLOADS = join(
+      mkdtempSync(join(tmpdir(), "dc-handle-")),
+      "q",
+    );
+    const db = freshDb();
+    const artifact = createArtifact(db, {
+      ownerId: "cfo",
+      filename: "lake.csv",
+      mediaType: "text/csv",
+      bytes: Buffer.from(
+        "period,entity_id,account,amount,currency,scenario\n2026-01,co-a,revenue,10,USD,actual",
+      ),
+    });
+    const inspected = (await callTool(db, "inspect_file", {
+      artifactId: artifact.id,
+      runId: "run-not-persisted",
+      userId: "cfo",
+    })) as { profile: { rowCount: number }; nextTool: string };
+    expect(inspected.profile.rowCount).toBe(1);
+    expect(inspected.nextTool).toBe("get_mapping_proposal");
+
+    const proposal = (await callTool(db, "get_mapping_proposal", {
+      artifactId: artifact.id,
+      runId: "run-demo",
+      userId: "cfo",
+    })) as { id: string; hash: string; status: string };
+    expect(proposal.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(proposal.status).toBe("waiting_approval");
+    await expect(
+      callTool(db, "apply_mapping", {
+        proposalId: proposal.id,
+        proposalHash: "stale",
+        runId: "run-demo",
+        userId: "cfo",
+      }),
+    ).rejects.toThrow(/changed after review/i);
+    await expect(
+      callTool(db, "apply_mapping", {
+        proposalId: proposal.id,
+        proposalHash: proposal.hash,
+        runId: "run-demo",
+        userId: "cfo",
+      }),
+    ).rejects.toThrow(/approval/i);
   });
 
   it("runs a sandbox cleaner and loads upload rows into the cube", async () => {
@@ -162,6 +215,13 @@ describe("MCP tools", () => {
     })) as { rows: { key: string; value: number }[] };
     expect(cube.rows.some((r) => r.key === "2026-01" && r.value === 100)).toBe(
       true,
+    );
+  });
+
+  it("query_sql rejects mutating statements before touching Postgres", async () => {
+    const db = freshDb();
+    await expect(callTool(db, "query_sql", { sql: "DELETE FROM facts" })).rejects.toThrow(
+      /select/i,
     );
   });
 });

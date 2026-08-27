@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 3/4 — TrueForge harness + Operate UI (product slice complete; evidence still open)
+**Phase:** 3/4 — Build (agentic ingestion + observable workspace)
 
-**Current step:** `feat/product-finish` — HTTP MCP + harness register + Operate polish; browser-verified on :3001.
+**Current step:** Observable ingestion and the unified agent workspace are implemented. Qodo High findings and the first PR #11 Medium follow-up batch are fixed; PR #12 Medium findings are next before dashboard DSL.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -38,6 +38,15 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [x] Approval gate on publish / sensitive export
 - [x] Persistent session survives refresh
 - [x] Impeccable Operate UI pass + browser verify
+- [x] True lake (files + Postgres catalog) + MCP `query_sql` / `present_chart` (`feat/cfo-lake`)
+- [x] Chart export, widget fullscreen/resize, pin agent chart to any board
+- [x] Hierarchical drill including P&amp;L table cells
+- [x] Signal Room redesign: exception-first layout, responsive agent bar, accessible fullscreen/resize, documented design system
+- [x] Observable TrueForge run ledger + replay
+- [x] Agent-owned quarantine, inspection, mapping approval, and canonical load
+- [x] Unified Markdown agent workspace + attachments
+- [ ] Validated agent-designed dashboard DSL
+- [ ] Editable CFO guidance + read-only assembled prompt
 
 ## Phase 4 — Hackathon evidence
 
@@ -69,7 +78,14 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-26 | Layout A: nav + board | User picked recommended |
 | 2026-08-26 | View/Edit: same board, mode bar | User picked recommended; keep taking recommended for a while |
 | 2026-08-26 | Sample pack may load without sandbox; uploads require sandbox | Judges can run if Daytona is missing |
-| 2026-08-26 | Upload ingest is CSV + USD only; Excel is 4xx | Silent xlsx→0 rows was worse than dropping Excel for the demo |
+| 2026-08-27 | Default TrueForge model is `openai/gpt-5-4-mini` | Cheapest OpenAI model in the local TrueForge catalog; OpenAI key already added |
+| 2026-08-27 | True lake: local files + Postgres catalog (`entities` + `facts`); cube kept for uploads | User chose lake over a single wide table; local Postgres for speed |
+| 2026-08-27 | Drill: period → group → vertical → company → category → product → account; P&amp;L cells drill too | CFO hierarchy + table navigation |
+| 2026-08-27 | Agent charts pin to any personal board; widgets export CSV/PNG, resize, fullscreen | Demo UX; irreversible org publish still the approval gate |
+| 2026-08-27 | Signal Room is the product UI direction | User selected sample 2; exception-first hierarchy keeps lake evidence, agent work, and approval visible |
+| 2026-08-27 | TrueForge run ledger replaces direct ingestion orchestration | Judges and users must see real sandbox, MCP, subagents, decisions, artifacts, and approvals |
+| 2026-08-27 | Inspect/profile automatically; approve mapping before canonical lake writes | Agent acts while the CFO controls consequential data changes |
+| 2026-08-27 | CFO guidance is editable; assembled prompt and immutable policy are read-only | Useful control without allowing safety/tool rules to be removed |
 
 ## Open questions
 

@@ -17,6 +17,11 @@ export const MCP_TOOLS: McpToolDef[] = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "load_lake",
+    description: "Load the Northstar Group lake pack into Postgres (hierarchy + facts).",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "upload_close_file",
     description:
       "Store a CSV close file and clean it in the sandbox. Requires TRUEFORGE_SANDBOX=1. USD only.",
@@ -27,6 +32,63 @@ export const MCP_TOOLS: McpToolDef[] = [
         bytes: { type: "string", description: "Base64 file bytes" },
       },
       required: ["filename", "bytes"],
+    },
+  },
+  {
+    name: "inspect_file",
+    description:
+      "Inspect a quarantined CSV by opaque artifact handle. Returns schema, missingness, examples, and a sandbox validation task. Does not write lake facts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifactId: { type: "string" },
+        runId: { type: "string" },
+        userId: { type: "string" },
+      },
+      required: ["artifactId", "runId", "userId"],
+    },
+  },
+  {
+    name: "profile_dataset",
+    description:
+      "Profile a quarantined CSV by opaque artifact handle. Alias of inspect_file for analysis workflows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifactId: { type: "string" },
+        runId: { type: "string" },
+        userId: { type: "string" },
+      },
+      required: ["artifactId", "runId", "userId"],
+    },
+  },
+  {
+    name: "get_mapping_proposal",
+    description:
+      "Propose source-to-lake field mappings and return an immutable proposal hash. Review this result before requesting apply_mapping.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifactId: { type: "string" },
+        runId: { type: "string" },
+        userId: { type: "string" },
+      },
+      required: ["artifactId", "runId", "userId"],
+    },
+  },
+  {
+    name: "apply_mapping",
+    description:
+      "Write approved rows to the canonical Postgres lake with lineage. The proposal hash must exactly match; human approval is required by TrueForge.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        proposalId: { type: "string" },
+        proposalHash: { type: "string" },
+        runId: { type: "string" },
+        userId: { type: "string" },
+      },
+      required: ["proposalId", "proposalHash", "runId", "userId"],
     },
   },
   {
@@ -42,6 +104,46 @@ export const MCP_TOOLS: McpToolDef[] = [
       properties: {
         metric: { type: "string" },
         grain: { type: "string", enum: ["period", "function", "account"] },
+        filters: { type: "object" },
+      },
+      required: ["metric", "grain"],
+    },
+  },
+  {
+    name: "query_lake",
+    description:
+      "Query the warehouse at group/vertical/company/category/product/period/account grain.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        metric: { type: "string" },
+        grain: {
+          type: "string",
+          enum: ["group", "vertical", "company", "category", "product", "period", "account"],
+        },
+        filters: { type: "object" },
+      },
+      required: ["metric", "grain"],
+    },
+  },
+  {
+    name: "query_sql",
+    description: "Read-only SELECT against Postgres (facts, entities, lake_objects).",
+    inputSchema: {
+      type: "object",
+      properties: { sql: { type: "string" } },
+      required: ["sql"],
+    },
+  },
+  {
+    name: "present_chart",
+    description: "Return a chart spec and rows for the portal to render and pin.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        metric: { type: "string" },
+        grain: { type: "string" },
         filters: { type: "object" },
       },
       required: ["metric", "grain"],
