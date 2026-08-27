@@ -51,6 +51,34 @@ describe("collectTurn terminal races", () => {
     expect(getRun(db, run.id)?.status).toBe("done");
   });
 
+  it("keeps charts when a completed stream is interrupted", async () => {
+    const { db, run } = fresh();
+    const stream = (async function* () {
+      yield {
+        data: {
+          type: "tool.response",
+          toolCallId: "chart-1",
+          content:
+            '{"title":"Revenue","query":{"metric":"revenue","grain":"period"}}',
+        },
+      };
+      yield {
+        data: {
+          type: "turn.done",
+          state: { status: "done", output: { content: "Revenue is up." } },
+        },
+      };
+      throw new Error("socket closed");
+    })();
+
+    const result = await collectTurn(stream, run.id);
+    expect(result.status).toBe("done");
+    expect(result.charts).toEqual([
+      { title: "Revenue", query: { metric: "revenue", grain: "period" } },
+    ]);
+    expect(result.output).toBe("Revenue is up.");
+  });
+
   it("keeps a cancelled run from being reported as done", async () => {
     const { db, run } = fresh();
     const stream = (async function* () {
