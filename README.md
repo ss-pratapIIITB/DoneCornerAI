@@ -26,7 +26,7 @@ Demo identity header (optional): `x-demo-user: cfo | fpna | viewer`. Default is 
 npx @truefoundry/trueforge
 ```
 
-Default URL: `http://localhost:8790`. Override with `TRUEFORGE_BASE_URL`. Optional `TRUEFORGE_TOKEN` (OIDC). Optional `TRUEFORGE_MODEL` (default `anthropic/claude-sonnet-4-6` — the provider must exist in TrueForge or the query bar 422s).
+Default URL: `http://localhost:8790`. Override with `TRUEFORGE_BASE_URL`. Optional `TRUEFORGE_TOKEN` (OIDC). Optional `TRUEFORGE_MODEL` (default `openai/gpt-5-4-mini`, the cheapest OpenAI model TrueForge lists once an OpenAI key is added).
 
 Uploads require the sandbox:
 
@@ -36,7 +36,7 @@ TRUEFORGE_SANDBOX=1 npm run dev
 
 Sample pack load works without Daytona or TrueForge. Persist the query session id in `localStorage` key `donecorner.tf.session`.
 
-MCP tools: HTTP JSON-RPC at `/api/mcp` (TrueForge remote server `donecorner`). The portal registers that server and the `close-pack` agent when TrueForge is up. Also `mcp/server.ts` stdio for local debugging. Tools: `load_sample_pack`, `upload_close_file`, `describe_schema`, `query_cube`, `get_dashboard`, `save_personal_dashboard`, `request_publish_org` (approval required). Override the MCP URL with `DONECORNER_MCP_URL` if TrueForge cannot reach `http://localhost:3000/api/mcp`.
+MCP tools: HTTP JSON-RPC at `/api/mcp` (TrueForge remote server `donecorner`). The portal registers that server and the `close-pack` agent when TrueForge is up. Also `mcp/server.ts` stdio for local debugging. Tools: `load_sample_pack`, `upload_close_file`, `describe_schema`, `query_cube`, `get_dashboard`, `save_personal_dashboard`, `request_publish_org` (approval required). Override the MCP URL with `DONECORNER_MCP_URL` if TrueForge cannot reach `http://127.0.0.1:$PORT/api/mcp`.
 
 ## Contributing
 
@@ -46,6 +46,6 @@ Substantive work goes through pull requests. Do not push application changes str
 
 Qodo is required on every substantive PR.
 
-- Representative PRs: https://github.com/ss-pratapIIITB/DoneCornerAI/pull/5 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/6 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/7
+- Representative PRs: https://github.com/ss-pratapIIITB/DoneCornerAI/pull/5 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/6 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/7 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/8 · https://github.com/ss-pratapIIITB/DoneCornerAI/pull/9
 - What Qodo surfaced: cube metric bugs (PR 5/6); ingest bugs (quoted CSV, USD relabel, non-atomic replace, Excel zero-rows, empty uploads keeping stale data, non-numeric amounts stored as zero)
-- What we changed or dismissed: cube fixes in PR 6. Ingest parser, USD skip, transactional replace, and Excel 4xx in PR 7. Empty recognized uploads now clear prior `source=upload` rows; malformed numbers reject the file. Host child-process sandbox kept (sample pack must run without Daytona). Publish approval stays the only human gate.
+- What we changed or dismissed: cube fixes in PR 6. Ingest parser, USD skip, transactional replace, and Excel 4xx in PR 7. Empty recognized uploads now clear prior `source=upload` rows; malformed numbers reject the file. Host child-process sandbox kept (sample pack must run without Daytona). Publish approval stays the only human gate. PR 9: HTTP MCP + Operate shell. Follow-up: default model `openai/gpt-5-4-mini`; `request_publish_org` queues pending only (does not self-approve).

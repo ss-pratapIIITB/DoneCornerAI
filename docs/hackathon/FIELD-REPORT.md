@@ -17,7 +17,7 @@ A CFO close is not a chat. Files have to become a cube, charts have to drill wit
 
 ## What TrueForge handled
 
-Session create/resume, turn streaming for the query bar, `require_approval_for_tools` on org publish, sandbox flag on the close-pack agent spec, skill folders under `skills/`.
+Session create/resume, turn streaming for the query bar, `require_approval_for_tools` on org publish, sandbox flag on the close-pack agent spec. Skill folders under `skills/` stay in the repo for humans; they are not required in the TrueForge agent (unconfigured skills 422 session create).
 
 ## What broke
 

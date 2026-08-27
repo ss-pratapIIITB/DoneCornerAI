@@ -2,13 +2,14 @@ import { TrueForgeError } from "@truefoundry/trueforge-sdk";
 import { trueforge } from "@/lib/trueforge/client";
 import {
   CLOSE_PACK_AGENT,
+  closePackModel,
   closePackSpec,
 } from "@/lib/trueforge/agent";
 
-const MODEL = process.env.TRUEFORGE_MODEL ?? "anthropic/claude-sonnet-4-6";
-
 export function donecornerMcpUrl(): string {
-  return process.env.DONECORNER_MCP_URL ?? "http://localhost:3000/api/mcp";
+  if (process.env.DONECORNER_MCP_URL) return process.env.DONECORNER_MCP_URL;
+  const port = process.env.PORT ?? "3000";
+  return `http://127.0.0.1:${port}/api/mcp`;
 }
 
 export async function ensureHarness(): Promise<void> {
@@ -23,7 +24,7 @@ export async function ensureHarness(): Promise<void> {
   });
 
   const spec = {
-    ...closePackSpec(MODEL),
+    ...closePackSpec(closePackModel()),
     config: {
       sandbox: { enabled: true },
       dynamicSubAgents: { enabled: true },

@@ -75,7 +75,7 @@ describe("MCP tools", () => {
     expect(orgAfter.widgets).toHaveLength(0);
   });
 
-  it("request_publish_org overwrites org Close after approval", async () => {
+  it("request_publish_org queues pending and does not overwrite org Close", async () => {
     const db = freshDb();
     const personal = (await callTool(db, "save_personal_dashboard", {
       userId: "cfo",
@@ -99,13 +99,18 @@ describe("MCP tools", () => {
       userId: "cfo",
       personalId: personal.id,
     });
-    expect(result).toMatchObject({ state: "approved" });
+    expect(result).toMatchObject({ state: "pending" });
     const orgAfter = (await callTool(db, "get_dashboard", { id: "org-close" })) as {
       widgets: { id: string }[];
     };
-    expect(orgAfter.widgets).toEqual([
-      expect.objectContaining({ id: "w-pub" }),
-    ]);
+    expect(orgAfter.widgets).toHaveLength(0);
+  });
+
+  it("request_publish_org requires userId", async () => {
+    const db = freshDb();
+    await expect(
+      callTool(db, "request_publish_org", { personalId: "personal-cfo-pub" }),
+    ).rejects.toThrow(/userId/i);
   });
 
   it("upload_close_file rejects when sandbox is off", async () => {

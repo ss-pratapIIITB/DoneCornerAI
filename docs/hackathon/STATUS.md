@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 3/4 — TrueForge harness + Operate UI (product slice complete; evidence still open)
+**Phase:** 4/4 — Demo-ready (product on `feat/demo-ready`)
 
-**Current step:** `feat/product-finish` — HTTP MCP + harness register + Operate polish; browser-verified on :3001.
+**Current step:** One commit so a stranger can load the pack, drill, Ask, and publish.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -69,7 +69,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-26 | Layout A: nav + board | User picked recommended |
 | 2026-08-26 | View/Edit: same board, mode bar | User picked recommended; keep taking recommended for a while |
 | 2026-08-26 | Sample pack may load without sandbox; uploads require sandbox | Judges can run if Daytona is missing |
-| 2026-08-26 | Upload ingest is CSV + USD only; Excel is 4xx | Silent xlsx→0 rows was worse than dropping Excel for the demo |
+| 2026-08-27 | Default TrueForge model is `openai/gpt-5-4-mini` | Cheapest OpenAI model in the local TrueForge catalog; OpenAI key already added |
 
 ## Open questions
 

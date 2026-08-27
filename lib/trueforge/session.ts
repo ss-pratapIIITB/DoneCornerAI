@@ -1,9 +1,7 @@
 import { TrueForgeError } from "@truefoundry/trueforge-sdk";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
-import { CLOSE_PACK_AGENT, closePackSpec } from "@/lib/trueforge/agent";
+import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
 import { ensureHarness } from "@/lib/trueforge/harness";
-
-const MODEL = process.env.TRUEFORGE_MODEL ?? "anthropic/claude-sonnet-4-6";
 
 export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reason: string }> {
   try {
@@ -45,7 +43,7 @@ export async function resumeOrCreateSession(sessionId?: string | null): Promise<
     return { id: named.data.id };
   } catch {
     const inline = await client.sessions.create({
-      agent: { spec: closePackSpec(MODEL) },
+      agent: { spec: closePackSpec(closePackModel()) },
     });
     return { id: inline.data.id };
   }
@@ -66,6 +64,83 @@ function eventRecord(item: unknown): Record<string, unknown> {
     return (item as { data: Record<string, unknown> }).data;
   }
   return (item ?? {}) as Record<string, unknown>;
+}
+
+function outputText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "content" in value) {
+    return String((value as { content?: unknown }).content ?? "");
+  }
+  return "";
+}
+
+export function summarizeTurnEvents(events: unknown[]): TurnSummary {
+  let output = "";
+  let status: TurnSummary["status"] = "done";
+  const pendingApprovals: TurnSummary["pendingApprovals"] = [];
+  for (const item of events) {
+    const event = eventRecord(item);
+    const type = String(event.type ?? "");
+    if (type === "model.message.delta" || type === "model.message") {
+      const chunk = outputText(event.content ?? event);
+      if (chunk && type === "model.message.delta") output += chunk;
+      else if (chunk && type === "model.message" && !output) output = chunk;
+    }
+    if (type === "tool.approval_required") {
+      status = "waiting_approval";
+      const calls = (event.toolCalls ?? event.tool_calls ?? []) as {
+        id?: string;
+        toolCallId?: string;
+        toolInfo?: { name?: string };
+      }[];
+      const threadId = String(event.threadId ?? event.thread_id ?? "main");
+      for (const call of calls) {
+        pendingApprovals.push({
+          threadId,
+          toolCallId: String(call.toolCallId ?? call.id ?? ""),
+          name: call.toolInfo?.name,
+        });
+      }
+    }
+    if (type === "turn.done") {
+      const state = event.state as {
+        status?: string;
+        output?: unknown;
+        required_actions?: {
+          type?: string;
+          thread_id?: string;
+          threadId?: string;
+          tool_calls?: { id?: string }[];
+        }[];
+      } | undefined;
+      const fromState = outputText(state?.output);
+      if (fromState) output = fromState;
+      const actions = state?.required_actions ?? [];
+      const needsApproval = actions.some((a) =>
+        String(a.type ?? "").includes("approval"),
+      );
+      if (needsApproval) {
+        status = "waiting_approval";
+        for (const action of actions) {
+          if (!String(action.type ?? "").includes("approval")) continue;
+          const threadId = String(action.threadId ?? action.thread_id ?? "main");
+          for (const call of action.tool_calls ?? []) {
+            if (!pendingApprovals.some((p) => p.toolCallId === String(call.id ?? ""))) {
+              pendingApprovals.push({
+                threadId,
+                toolCallId: String(call.id ?? ""),
+              });
+            }
+          }
+        }
+      } else if (state?.status === "error" || state?.status === "cancelled") {
+        status = "error";
+      } else if (status !== "waiting_approval") {
+        status = state?.status === "error" ? "error" : "done";
+      }
+    }
+  }
+  return { status, output, pendingApprovals };
 }
 
 export async function runUserTurn(
@@ -103,40 +178,9 @@ export async function runApprovalTurn(
 }
 
 async function collectTurn(stream: AsyncIterable<unknown>): Promise<TurnSummary> {
-  let output = "";
-  let status: TurnSummary["status"] = "done";
-  const pendingApprovals: TurnSummary["pendingApprovals"] = [];
+  const events: unknown[] = [];
   try {
-    for await (const item of stream) {
-      const event = eventRecord(item);
-      const type = String(event.type ?? "");
-      if (type === "model.message.delta") {
-        output += String(event.content ?? "");
-      }
-      if (type === "tool.approval_required") {
-        status = "waiting_approval";
-        const calls = (event.toolCalls ?? event.tool_calls ?? []) as {
-          id?: string;
-          toolCallId?: string;
-          toolInfo?: { name?: string };
-        }[];
-        const threadId = String(event.threadId ?? event.thread_id ?? "main");
-        for (const call of calls) {
-          pendingApprovals.push({
-            threadId,
-            toolCallId: String(call.toolCallId ?? call.id ?? ""),
-            name: call.toolInfo?.name,
-          });
-        }
-      }
-      if (type === "turn.done") {
-        const state = event.state as { status?: string; output?: { content?: string } } | undefined;
-        if (state?.output?.content) output = state.output.content;
-        if (status !== "waiting_approval") {
-          status = state?.status === "error" ? "error" : "done";
-        }
-      }
-    }
+    for await (const item of stream) events.push(item);
   } catch (err) {
     return {
       status: "error",
@@ -144,5 +188,5 @@ async function collectTurn(stream: AsyncIterable<unknown>): Promise<TurnSummary>
       pendingApprovals: [],
     };
   }
-  return { status, output, pendingApprovals };
+  return summarizeTurnEvents(events);
 }

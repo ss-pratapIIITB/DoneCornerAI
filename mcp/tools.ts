@@ -7,7 +7,7 @@ import {
   savePersonalDashboard,
   type Dashboard,
 } from "@/lib/dashboards/store";
-import { requestPublishOrg, resolvePublish } from "@/lib/dashboards/publish";
+import { requestPublishOrg } from "@/lib/dashboards/publish";
 import { loadSamplePack } from "@/lib/pack/load-sample";
 import { ingestCloseUpload } from "@/lib/pack/ingest";
 
@@ -48,16 +48,16 @@ export async function callTool(
       return dashboard;
     }
     case "save_personal_dashboard": {
-      const userId = String(args.userId ?? "cfo");
+      const userId = String(args.userId ?? "").trim();
+      if (!userId) throw new Error("userId is required");
       const dashboard = args.dashboard as Dashboard;
       return savePersonalDashboard(db, userId, dashboard);
     }
     case "request_publish_org": {
-      const userId = String(args.userId ?? "cfo");
+      const userId = String(args.userId ?? "").trim();
+      if (!userId) throw new Error("userId is required");
       const personalId = String(args.personalId ?? "");
-      const pending = requestPublishOrg(db, userId, personalId);
-      // TrueForge only invokes this tool after the human allow.
-      return resolvePublish(db, pending.id, "approved", userId);
+      return requestPublishOrg(db, userId, personalId);
     }
     default:
       throw new Error(`Unknown tool ${name}`);

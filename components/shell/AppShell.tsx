@@ -165,10 +165,13 @@ export function AppShell({ children }: Props) {
     const session = (await created.json()) as { id: string };
     localStorage.setItem(TF_SESSION, session.id);
     setTfSession(session.id);
+    const prompt = board
+      ? `${q}\n\nCurrent board id: ${board.id}. Call query_cube for numbers. Use userId "cfo" on write tools.`
+      : q;
     const turn = await fetch("/api/session/turn", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId: session.id, message: q }),
+      body: JSON.stringify({ sessionId: session.id, message: prompt }),
     });
     if (!turn.ok) {
       setAgent("error", "The query turn failed.");
@@ -191,7 +194,7 @@ export function AppShell({ children }: Props) {
   }
 
   async function resolveRail(decision: "approved" | "denied") {
-    let applied = Boolean(publishId);
+    const hadPublish = Boolean(publishId);
     if (tfSession && pendingTf.length) {
       const approved = await fetch("/api/session/approve", {
         method: "POST",
@@ -205,29 +208,48 @@ export function AppShell({ children }: Props) {
           })),
         }),
       });
-      setPendingTf([]);
-      applied = applied || approved.ok;
-      if (!approved.ok && !publishId) {
-        setAgent("error", "Could not send the approval to TrueForge.");
+      const summary = (await approved.json().catch(() => ({}))) as {
+        status?: AgentStatus;
+        output?: string;
+        pendingApprovals?: {
+          threadId: string;
+          toolCallId: string;
+          name?: string;
+        }[];
+        error?: string;
+      };
+      setPendingTf(summary.pendingApprovals ?? []);
+      if (!approved.ok || summary.status === "error") {
+        setAgent("error", summary.output ?? summary.error ?? "Approval turn failed.");
+        return;
+      }
+      if (summary.status === "waiting_approval") {
+        setAgent(
+          "waiting_approval",
+          summary.output || "Still waiting for approval.",
+        );
         return;
       }
     }
     if (publishId) {
-      await fetch("/api/dashboards/publish", {
+      const resolved = await fetch("/api/dashboards/publish", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "resolve", id: publishId, decision }),
       });
+      if (!resolved.ok) {
+        setAgent("error", "Could not apply the publish decision.");
+        return;
+      }
     }
     setPublishId(null);
-    const orgTouched = applied && decision === "approved";
     setAgent(
       decision === "approved" ? "done" : "idle",
-      orgTouched
-        ? "Org Close updated."
-        : decision === "approved"
-          ? "Approval sent."
-          : "Publish denied. Personal draft kept.",
+      decision === "approved"
+        ? hadPublish
+          ? "Org Close updated."
+          : "Approval sent."
+        : "Publish denied. Personal draft kept.",
     );
     await refreshBoard();
   }
