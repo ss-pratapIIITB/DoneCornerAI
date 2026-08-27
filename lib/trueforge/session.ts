@@ -216,7 +216,12 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
 export async function runUserTurn(
   sessionId: string,
   message: string,
-  options: { runId?: string; kind?: RunKind; userId?: string } = {},
+  options: {
+    runId?: string;
+    kind?: RunKind;
+    userId?: string;
+    displayMessage?: string;
+  } = {},
 ): Promise<TurnSummary> {
   const client = trueforge();
   const db = getDb();
@@ -225,8 +230,8 @@ export async function runUserTurn(
   appendRunEvent(db, runId, {
     type: "user.message",
     stage: "input",
-    summary: message,
-    details: { content: message },
+    summary: options.displayMessage ?? message,
+    details: { content: options.displayMessage ?? message },
   });
   const stream = await client.sessions.createTurnStream(sessionId, {
     input: [{ type: "user.message", content: message }],

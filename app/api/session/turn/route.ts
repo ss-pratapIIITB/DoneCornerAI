@@ -15,6 +15,7 @@ export async function POST(req: Request): Promise<Response> {
       message?: string;
       runId?: string;
       kind?: RunKind;
+      displayMessage?: string;
     };
     if (!body.sessionId || !body.message?.trim()) {
       return Response.json({ error: "sessionId and message required" }, { status: 400 });
@@ -23,6 +24,7 @@ export async function POST(req: Request): Promise<Response> {
       runId: body.runId,
       kind: body.kind,
       userId: "cfo",
+      displayMessage: body.displayMessage,
     });
     return Response.json(result);
   } catch (err) {
