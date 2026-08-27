@@ -8,9 +8,10 @@ export const runtime = "nodejs";
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const sessionId = url.searchParams.get("sessionId") ?? undefined;
+  const user = userFromRequest(req);
   const db = getDb();
   migrate(db);
-  const runs = listRuns(db, { sessionId }).map((run) => ({
+  const runs = listRuns(db, { sessionId, userId: user.id }).map((run) => ({
     ...run,
     events: listRunEvents(db, run.id),
   }));

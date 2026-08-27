@@ -176,6 +176,14 @@ describe("MCP tools", () => {
         userId: "cfo",
       }),
     ).rejects.toThrow(/changed after review/i);
+    await expect(
+      callTool(db, "apply_mapping", {
+        proposalId: proposal.id,
+        proposalHash: proposal.hash,
+        runId: "run-demo",
+        userId: "cfo",
+      }),
+    ).rejects.toThrow(/approval/i);
   });
 
   it("runs a sandbox cleaner and loads upload rows into the cube", async () => {

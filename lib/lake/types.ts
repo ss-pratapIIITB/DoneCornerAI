@@ -8,7 +8,18 @@ export const ENTITY_LEVELS = [
 
 export type EntityLevel = (typeof ENTITY_LEVELS)[number];
 
-export type LakeGrain = EntityLevel | "period" | "account";
+export const LAKE_GRAINS = ["period", "account", ...ENTITY_LEVELS] as const;
+export type LakeGrain = (typeof LAKE_GRAINS)[number];
+
+export function parseLakeGrain(value: unknown): LakeGrain {
+  if (
+    typeof value !== "string" ||
+    !LAKE_GRAINS.includes(value as LakeGrain)
+  ) {
+    throw new Error("Invalid lake grain");
+  }
+  return value as LakeGrain;
+}
 
 export type LakeFilters = {
   group?: string;

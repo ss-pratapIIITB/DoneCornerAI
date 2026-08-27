@@ -139,7 +139,12 @@ export function readArtifact(
   const root = resolve(/*turbopackIgnore: true*/ artifactRoot());
   const path = resolve(root, row.storage_key);
   if (!path.startsWith(`${root}/`)) throw new Error("Invalid artifact storage key");
-  return readFileSync(/*turbopackIgnore: true*/ path);
+  const bytes = readFileSync(/*turbopackIgnore: true*/ path);
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  if (sha256 !== row.sha256) {
+    throw new Error("Artifact checksum changed after quarantine.");
+  }
+  return bytes;
 }
 
 export function updateArtifactStatus(

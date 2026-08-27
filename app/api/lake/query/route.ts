@@ -1,6 +1,6 @@
 import { jsonError } from "@/lib/api/http";
 import { queryLake, queryPnlTable } from "@/lib/lake/query";
-import type { LakeQuery } from "@/lib/lake/types";
+import { parseLakeGrain, type LakeQuery } from "@/lib/lake/types";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     const rows = await queryLake({
       metric: String(body.metric ?? "revenue"),
-      grain: body.grain ?? "period",
+      grain: parseLakeGrain(body.grain ?? "period"),
       filters: body.filters ?? { scenario: "actual" },
     });
     return Response.json({ rows });

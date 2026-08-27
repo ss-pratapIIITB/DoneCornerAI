@@ -11,6 +11,11 @@ import {
   createNormalizationContext,
   normalizeTrueForgeEvent,
 } from "@/lib/runs/normalize";
+import {
+  assertAgentSessionOwner,
+  bindAgentSession,
+  isAgentSessionOwner,
+} from "@/lib/runs/sessions";
 import type { RunEvent, RunKind, RunStatus } from "@/lib/runs/types";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
 import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
@@ -35,9 +40,14 @@ export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reas
   }
 }
 
-export async function resumeOrCreateSession(sessionId?: string | null): Promise<{ id: string }> {
+export async function resumeOrCreateSession(
+  sessionId: string | null | undefined,
+  userId: string,
+): Promise<{ id: string }> {
   const client = trueforge();
-  if (sessionId) {
+  const db = getDb();
+  migrate(db);
+  if (sessionId && isAgentSessionOwner(db, sessionId, userId)) {
     try {
       const existing = await client.sessions.get(sessionId);
       return { id: existing.data.id };
@@ -48,18 +58,21 @@ export async function resumeOrCreateSession(sessionId?: string | null): Promise<
     }
   }
 
+  let created: { id: string };
   try {
     await ensureHarness();
     const named = await client.sessions.create({
       agent: { name: CLOSE_PACK_AGENT },
     });
-    return { id: named.data.id };
+    created = { id: named.data.id };
   } catch {
     const inline = await client.sessions.create({
       agent: { spec: closePackSpec(closePackModel()) },
     });
-    return { id: inline.data.id };
+    created = { id: inline.data.id };
   }
+  bindAgentSession(db, created.id, userId);
+  return created;
 }
 
 export type TurnSummary = {
@@ -219,13 +232,14 @@ export async function runUserTurn(
   options: {
     runId?: string;
     kind?: RunKind;
-    userId?: string;
+    userId: string;
     displayMessage?: string;
-  } = {},
+  },
 ): Promise<TurnSummary> {
   const client = trueforge();
   const db = getDb();
   migrate(db);
+  assertAgentSessionOwner(db, sessionId, options.userId);
   const runId = ensureRun(db, sessionId, options);
   appendRunEvent(db, runId, {
     type: "user.message",
@@ -247,15 +261,17 @@ export async function runApprovalTurn(
     allow: boolean;
     reason?: string;
   }[],
+  userId: string,
   runId?: string,
 ): Promise<TurnSummary> {
   const client = trueforge();
   const db = getDb();
   migrate(db);
+  assertAgentSessionOwner(db, sessionId, userId);
   const activeRunId = ensureRun(db, sessionId, {
     runId,
     kind: "question",
-    userId: "cfo",
+    userId,
   });
   updateRun(db, activeRunId, {
     status: "running",
@@ -277,18 +293,22 @@ export async function runApprovalTurn(
 function ensureRun(
   db: ReturnType<typeof getDb>,
   sessionId: string,
-  options: { runId?: string; kind?: RunKind; userId?: string },
+  options: { runId?: string; kind?: RunKind; userId: string },
 ): string {
   if (options.runId) {
     const existing = getRun(db, options.runId);
-    if (!existing || existing.sessionId !== sessionId) {
+    if (
+      !existing ||
+      existing.sessionId !== sessionId ||
+      existing.userId !== options.userId
+    ) {
       throw new Error("Run does not belong to this session");
     }
     return existing.id;
   }
   return createRun(db, {
     sessionId,
-    userId: options.userId ?? "cfo",
+    userId: options.userId,
     kind: options.kind ?? "question",
   }).id;
 }

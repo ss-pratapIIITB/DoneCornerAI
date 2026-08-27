@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -15,12 +15,12 @@ function setup() {
   process.env.DONECORNER_UPLOADS = join(root, "quarantine");
   const db = getDb();
   migrate(db);
-  return db;
+  return { db, root };
 }
 
 describe("artifact quarantine", () => {
   it("stores bytes behind an opaque handle and checksum", () => {
-    const db = setup();
+    const { db } = setup();
     const bytes = Buffer.from("period,amount\n2026-01,42");
     const artifact = createArtifact(db, {
       ownerId: "cfo",
@@ -38,7 +38,7 @@ describe("artifact quarantine", () => {
   });
 
   it("rejects unsupported types before writing", () => {
-    const db = setup();
+    const { db } = setup();
     expect(() =>
       createArtifact(db, {
         ownerId: "cfo",
@@ -47,5 +47,22 @@ describe("artifact quarantine", () => {
         bytes: Buffer.from("MZ"),
       }),
     ).toThrow(/CSV/i);
+  });
+
+  it("rejects quarantined bytes changed after review", () => {
+    const { db, root } = setup();
+    const artifact = createArtifact(db, {
+      ownerId: "cfo",
+      filename: "finance.csv",
+      mediaType: "text/csv",
+      bytes: Buffer.from("period,amount\n2026-01,42"),
+    });
+    const quarantine = join(root, "quarantine");
+    writeFileSync(
+      join(quarantine, readdirSync(quarantine)[0]!),
+      "period,amount\n2026-01,999999",
+    );
+
+    expect(() => readArtifact(db, artifact.id, "cfo")).toThrow(/checksum/i);
   });
 });

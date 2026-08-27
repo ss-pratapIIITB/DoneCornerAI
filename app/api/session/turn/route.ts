@@ -1,4 +1,4 @@
-import { jsonError } from "@/lib/api/http";
+import { jsonError, userFromRequest } from "@/lib/api/http";
 import type { RunKind } from "@/lib/runs/types";
 import { probeTrueForge, runUserTurn } from "@/lib/trueforge/session";
 
@@ -23,7 +23,7 @@ export async function POST(req: Request): Promise<Response> {
     const result = await runUserTurn(body.sessionId, body.message.trim(), {
       runId: body.runId,
       kind: body.kind,
-      userId: "cfo",
+      userId: userFromRequest(req).id,
       displayMessage: body.displayMessage,
     });
     return Response.json(result);

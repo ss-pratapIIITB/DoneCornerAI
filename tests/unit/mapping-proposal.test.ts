@@ -47,6 +47,7 @@ describe("mapping proposals", () => {
       amount: "value",
     });
     expect(first.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(first.artifactSha256).toBe(artifact.sha256);
     expect(stored?.hash).toBe(first.hash);
     expect(first.preview.rowsAccepted).toBe(1);
     expect(JSON.stringify(first)).not.toContain(process.env.DONECORNER_UPLOADS);

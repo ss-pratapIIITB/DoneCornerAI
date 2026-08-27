@@ -1,7 +1,7 @@
 import { getPool } from "@/lib/pg/pool";
 import { migrateWarehouse } from "@/lib/pg/migrate";
 import type { LakeGrain, LakeQuery, LakeRow } from "@/lib/lake/types";
-import { ENTITY_LEVELS } from "@/lib/lake/types";
+import { ENTITY_LEVELS, parseLakeGrain } from "@/lib/lake/types";
 export { drillLake, drillLakeUp, nextLakeGrain, prevLakeGrain } from "@/lib/lake/drill";
 
 const METRIC_ACCOUNTS: Record<string, string[]> = {
@@ -27,6 +27,7 @@ function grainColumn(grain: LakeGrain): string {
 }
 
 export async function queryLake(q: LakeQuery): Promise<LakeRow[]> {
+  const grain = parseLakeGrain(q.grain);
   await migrateWarehouse();
   const pool = getPool();
   const accounts = q.filters.account?.length ? q.filters.account : accountsFor(q.metric);
@@ -55,7 +56,7 @@ export async function queryLake(q: LakeQuery): Promise<LakeRow[]> {
     params.push(q.filters.period);
   }
 
-  const col = grainColumn(q.grain);
+  const col = grainColumn(grain);
   const sql = `
     SELECT ${col} AS key, ${col} AS label, SUM(f.amount)::float AS value
     FROM facts f
