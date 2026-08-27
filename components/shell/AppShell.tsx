@@ -18,6 +18,7 @@ import {
 import { ModeBar } from "@/components/shell/ModeBar";
 import type { Dashboard } from "@/lib/dashboards/widgets";
 import type { LakeQuery } from "@/lib/lake/types";
+import { chartsFromRunEvents } from "@/lib/runs/replay";
 import type { AgentRun, RunEvent } from "@/lib/runs/types";
 
 type Mode = "view" | "edit";
@@ -103,6 +104,17 @@ function questionFromEvents(events: RunEvent[]): string {
     events.find((event) => event.type === "user.message")?.summary ??
     "Agent run"
   );
+}
+
+function chartsForBoard(events: RunEvent[]): AgentChart[] {
+  return chartsFromRunEvents(events).map((chart) => ({
+    title: chart.title,
+    query: {
+      metric: String(chart.query.metric ?? "revenue"),
+      grain: String(chart.query.grain ?? "period") as LakeQuery["grain"],
+      filters: (chart.query.filters ?? { scenario: "actual" }) as LakeQuery["filters"],
+    },
+  }));
 }
 
 function unresolvedApprovals(events: RunEvent[]) {
@@ -201,6 +213,8 @@ export function AppShell({ children }: Props) {
           : [],
       );
       const status = uiRunStatus(snapshot.run.status);
+      const charts = chartsForBoard(snapshot.events);
+      if (charts.length) setLastCharts(charts);
       setAgent(
         status,
         answer ||
@@ -247,6 +261,8 @@ export function AppShell({ children }: Props) {
     setPendingTf(latest.status === "waiting_approval" ? pending : []);
     const status = uiRunStatus(latest.status);
     setAgentStatus(status);
+    const charts = chartsForBoard(latest.events);
+    if (charts.length) setLastCharts(charts);
     setAgentDetail(
       answerFromEvents(latest.events) ||
         (status === "running" ? "Resuming live agent activity…" : "Ready."),

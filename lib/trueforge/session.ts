@@ -16,6 +16,11 @@ import {
   bindAgentSession,
   isAgentSessionOwner,
 } from "@/lib/runs/sessions";
+import {
+  chartsFromRunEvents,
+  outputFromRunEvents,
+  pendingApprovalsFromRunEvents,
+} from "@/lib/runs/replay";
 import type { RunEvent, RunKind, RunStatus } from "@/lib/runs/types";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
 import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
@@ -379,10 +384,12 @@ function summaryFromPersistedRun(
 ): TurnSummary {
   const run = getRun(db, runId);
   const events = listRunEvents(db, runId);
+  const status = turnStatusFromRun(run?.status);
   return {
-    status: turnStatusFromRun(run?.status),
-    output: events.at(-1)?.summary ?? "",
-    pendingApprovals: [],
+    status,
+    output: outputFromRunEvents(events),
+    pendingApprovals:
+      status === "waiting_approval" ? pendingApprovalsFromRunEvents(events) : [],
     charts: chartsFromRunEvents(events),
     runId,
     events,

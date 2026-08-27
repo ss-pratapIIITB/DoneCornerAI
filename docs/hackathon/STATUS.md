@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 3/4 — Build (agentic ingestion + observable workspace)
+**Phase:** 3/4 — Build (prompt control)
 
-**Current step:** PR #13 Qodo follow-up: preserve layout on org publish. PRs #11/#12 `/review` still in flight.
+**Current step:** Stacked PRs #11–#13 merged. Next is editable CFO guidance and a read-only assembled prompt.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
