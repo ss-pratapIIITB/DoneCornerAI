@@ -14,8 +14,8 @@ function redactValue(value: unknown, depth: number): unknown {
       ]),
     );
   }
-  if (typeof value === "string" && value.length > 4_000) {
-    return `${value.slice(0, 4_000)}…`;
+  if (typeof value === "string") {
+    return redactRunSummary(value);
   }
   return value;
 }
