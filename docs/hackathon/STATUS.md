@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 3/4 — Build (prompt control)
+**Phase:** 4 — Hackathon evidence
 
-**Current step:** Slice 5 implemented on `feat/prompt-control`: editable CFO guidance, read-only assembled prompt, TrueForge-bound turns, sample pack via agent with HTTP fallback.
+**Current step:** Prompt control merged ([PR 14](https://github.com/ss-pratapIIITB/DoneCornerAI/pull/14)). Remaining: README/DEMO/Field Report catch-up, Radio Traffic posts, star TrueForge.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -46,7 +46,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [x] Agent-owned quarantine, inspection, mapping approval, and canonical load
 - [x] Unified Markdown agent workspace + attachments
 - [x] Validated agent-designed dashboard DSL
-- [ ] Editable CFO guidance + read-only assembled prompt
+- [x] Editable CFO guidance + read-only assembled prompt ([PR 14](https://github.com/ss-pratapIIITB/DoneCornerAI/pull/14))
 
 ## Phase 4 — Hackathon evidence
 
@@ -88,6 +88,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-27 | CFO guidance is editable; assembled prompt and immutable policy are read-only | Useful control without allowing safety/tool rules to be removed |
 | 2026-08-27 | Personal dashboard drafts auto-save; org publish remains the approval gate | Matches the close-pack spec; Qodo overwrite finding is by design |
 | 2026-08-27 | Sample lake reset and quarantined discard require explicit confirm | Destructive, but not org-publish; TrueForge approval stays on mapping and org overwrite |
+| 2026-08-27 | Replacing Postgres lake facts requires a current TrueForge `load_lake` approval | Qodo High on PR 14; HTTP `confirm: true` is not an approval-tool outcome |
 
 ## Open questions
 
