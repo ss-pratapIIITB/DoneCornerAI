@@ -1,6 +1,6 @@
 import { jsonError, userFromRequest } from "@/lib/api/http";
 import { getDb, migrate } from "@/lib/db/sqlite";
-import { createRun, listRuns } from "@/lib/runs/ledger";
+import { createRun, listRunEvents, listRuns } from "@/lib/runs/ledger";
 import type { RunKind } from "@/lib/runs/types";
 
 export const runtime = "nodejs";
@@ -11,9 +11,11 @@ export async function GET(req: Request): Promise<Response> {
   const user = userFromRequest(req);
   const db = getDb();
   migrate(db);
-  return Response.json({
-    runs: listRuns(db, { sessionId, userId: user.id }),
-  });
+  const runs = listRuns(db, { sessionId, userId: user.id }).map((run) => ({
+    ...run,
+    events: listRunEvents(db, run.id),
+  }));
+  return Response.json({ runs });
 }
 
 export async function POST(req: Request): Promise<Response> {

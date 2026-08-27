@@ -10,11 +10,16 @@ import {
   useMemo,
   useState,
 } from "react";
-import { AgentRail, type AgentStatus } from "@/components/shell/AgentRail";
+import {
+  AgentRail,
+  type AgentStatus,
+  type AgentTurn,
+} from "@/components/shell/AgentRail";
 import { ModeBar } from "@/components/shell/ModeBar";
-import { QueryBar } from "@/components/shell/QueryBar";
 import type { Dashboard } from "@/lib/dashboards/widgets";
 import type { LakeQuery } from "@/lib/lake/types";
+import { chartsFromRunEvents } from "@/lib/runs/replay";
+import type { AgentRun, RunEvent } from "@/lib/runs/types";
 
 type Mode = "view" | "edit";
 
@@ -44,7 +49,100 @@ export function usePortalMode(): Mode {
   return usePortal().mode;
 }
 
+type UploadedArtifact = { id: string; name: string };
+
+async function discardArtifacts(artifacts: UploadedArtifact[]): Promise<void> {
+  await Promise.allSettled(
+    artifacts.map((artifact) =>
+      fetch("/api/artifacts", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ artifactId: artifact.id, confirm: true }),
+      }),
+    ),
+  );
+}
+
+async function markRunFailed(runId: string, summary: string): Promise<void> {
+  await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ summary }),
+  }).catch(() => undefined);
+}
+
 const TF_SESSION = "donecorner.tf.session";
+
+type RunWithEvents = AgentRun & { events: RunEvent[] };
+
+function answerFromEvents(events: RunEvent[]): string {
+  const terminal = [...events]
+    .reverse()
+    .find((event) =>
+      [
+        "run.completed",
+        "run.failed",
+        "run.cancelled",
+        "run.waiting_approval",
+      ].includes(event.type),
+    );
+  if (terminal) return terminal.summary;
+  const deltas = events
+    .filter((event) => event.type === "message.delta")
+    .map((event) => event.summary)
+    .join("");
+  if (deltas) return deltas;
+  return (
+    [...events]
+      .reverse()
+      .find((event) => event.type === "message.completed")?.summary ?? ""
+  );
+}
+
+function questionFromEvents(events: RunEvent[]): string {
+  return (
+    events.find((event) => event.type === "user.message")?.summary ??
+    "Agent run"
+  );
+}
+
+function chartsForBoard(events: RunEvent[]): AgentChart[] {
+  return chartsFromRunEvents(events).map((chart) => ({
+    title: chart.title,
+    query: {
+      metric: String(chart.query.metric ?? "revenue"),
+      grain: String(chart.query.grain ?? "period") as LakeQuery["grain"],
+      filters: (chart.query.filters ?? { scenario: "actual" }) as LakeQuery["filters"],
+    },
+  }));
+}
+
+function unresolvedApprovals(events: RunEvent[]) {
+  const pending = new Map<
+    string,
+    { threadId: string; toolCallId: string; name?: string }
+  >();
+  for (const event of events) {
+    const toolCallId = String(event.details.toolCallId ?? "");
+    if (!toolCallId) continue;
+    if (event.type === "approval.requested") {
+      pending.set(toolCallId, {
+        threadId: String(event.details.threadId ?? "main"),
+        toolCallId,
+        name: String(event.details.name ?? "Sensitive tool action"),
+      });
+    } else if (event.type === "approval.resolved") {
+      pending.delete(toolCallId);
+    }
+  }
+  return [...pending.values()];
+}
+
+function uiRunStatus(status: AgentRun["status"]): AgentStatus {
+  if (status === "queued") return "running";
+  if (status === "cancelled") return "error";
+  return status;
+}
 
 type Props = {
   children: React.ReactNode;
@@ -82,16 +180,49 @@ export function AppShell({ children }: Props) {
     "Connect TrueForge to ask follow-ups.",
   );
   const [tfSession, setTfSession] = useState<string | null>(null);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [pendingTf, setPendingTf] = useState<
     { threadId: string; toolCallId: string; name?: string }[]
   >([]);
   const [lastCharts, setLastCharts] = useState<AgentChart[]>([]);
-  const [turns, setTurns] = useState<{ q: string; a: string }[]>([]);
+  const [turns, setTurns] = useState<AgentTurn[]>([]);
 
   const setAgent = useCallback((status: AgentStatus, detail: string) => {
     setAgentStatus(status);
     setAgentDetail(detail);
   }, []);
+
+  const applyRunSnapshot = useCallback(
+    (snapshot: { run: AgentRun; events: RunEvent[] }) => {
+      const answer = answerFromEvents(snapshot.events);
+      setTurns((current) =>
+        current.map((turn) =>
+          turn.id === snapshot.run.id
+            ? {
+                ...turn,
+                a: answer,
+                run: snapshot.run,
+                events: snapshot.events,
+              }
+            : turn,
+        ),
+      );
+      setPendingTf(
+        snapshot.run.status === "waiting_approval"
+          ? unresolvedApprovals(snapshot.events)
+          : [],
+      );
+      const status = uiRunStatus(snapshot.run.status);
+      const charts = chartsForBoard(snapshot.events);
+      if (charts.length) setLastCharts(charts);
+      setAgent(
+        status,
+        answer ||
+          (status === "running" ? "Agent work is still running…" : "Ready."),
+      );
+    },
+    [setAgent],
+  );
 
   const refreshBoard = useCallback(async () => {
     const id =
@@ -105,6 +236,39 @@ export function AppShell({ children }: Props) {
     if (fallback.ok) setBoard((await fallback.json()) as Dashboard);
   }, [board?.id]);
 
+  const hydrateRuns = useCallback(async (sessionId: string) => {
+    const response = await fetch(
+      `/api/runs?sessionId=${encodeURIComponent(sessionId)}`,
+    );
+    if (!response.ok) return;
+    const body = (await response.json()) as { runs?: RunWithEvents[] };
+    const runs = [...(body.runs ?? [])].sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt),
+    );
+    setTurns(
+      runs.map((run) => ({
+        id: run.id,
+        q: questionFromEvents(run.events),
+        a: answerFromEvents(run.events),
+        run,
+        events: run.events,
+      })),
+    );
+    const latest = runs.at(-1);
+    if (!latest) return;
+    setActiveRunId(latest.id);
+    const pending = unresolvedApprovals(latest.events);
+    setPendingTf(latest.status === "waiting_approval" ? pending : []);
+    const status = uiRunStatus(latest.status);
+    setAgentStatus(status);
+    const charts = chartsForBoard(latest.events);
+    if (charts.length) setLastCharts(charts);
+    setAgentDetail(
+      answerFromEvents(latest.events) ||
+        (status === "running" ? "Resuming live agent activity…" : "Ready."),
+    );
+  }, []);
+
   useEffect(() => {
     const hydrate = window.setTimeout(() => {
       void refreshBoard();
@@ -114,7 +278,10 @@ export function AppShell({ children }: Props) {
         setAgentDetail("Publish will overwrite org Close with this personal board.");
       }
       const storedSession = localStorage.getItem(TF_SESSION);
-      if (storedSession) setTfSession(storedSession);
+      if (storedSession) {
+        setTfSession(storedSession);
+        void hydrateRuns(storedSession);
+      }
       void (async () => {
         const res = await fetch("/api/session");
         if (!res.ok) {
@@ -133,6 +300,53 @@ export function AppShell({ children }: Props) {
     // First paint only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!activeRunId || agentStatus !== "running") return;
+    let cancelled = false;
+    const poll = async () => {
+      let after = 0;
+      let events: RunEvent[] = [];
+      while (!cancelled) {
+        try {
+          const response = await fetch(
+            `/api/runs/${activeRunId}/events?after=${after}`,
+          );
+          if (!response.ok) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1000));
+            continue;
+          }
+          const snapshot = (await response.json()) as {
+            run: AgentRun;
+            events: RunEvent[];
+          };
+          if (cancelled) return;
+          const seen = new Set(events.map((event) => event.id));
+          events = [
+            ...events,
+            ...snapshot.events.filter((event) => !seen.has(event.id)),
+          ];
+          after = events.at(-1)?.sequence ?? after;
+          applyRunSnapshot({ run: snapshot.run, events });
+          if (
+            snapshot.run.status !== "running" &&
+            snapshot.run.status !== "queued"
+          ) {
+            return;
+          }
+        } catch {
+          if (cancelled) return;
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
+          continue;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRunId, agentStatus, applyRunSnapshot]);
 
   const enterEdit = useCallback(async () => {
     const res = await fetch("/api/dashboards", { method: "POST" });
@@ -178,8 +392,11 @@ export function AppShell({ children }: Props) {
     );
   }, [board, enterEdit, setAgent]);
 
-  async function ask(q: string) {
-    setAgent("running", "Asking Close Pack…");
+  async function ask(q: string, files: File[] = []) {
+    setAgent(
+      "running",
+      files.length ? "Quarantining attached files…" : "Starting agent run…",
+    );
     setLastCharts([]);
     const created = await fetch("/api/session", {
       method: "POST",
@@ -191,26 +408,103 @@ export function AppShell({ children }: Props) {
       setQueryDisabled(true);
       setQueryReason(body.reason ?? "TrueForge is not running.");
       setAgent("error", body.reason ?? "TrueForge is not running.");
-      return;
+      throw new Error(body.reason ?? "TrueForge is not running.");
     }
     const session = (await created.json()) as { id: string };
     localStorage.setItem(TF_SESSION, session.id);
     setTfSession(session.id);
-    const prompt = board
-      ? `${q}\n\nCurrent board id: ${board.id}. Use query_lake or query_sql and present_chart. userId is cfo.`
-      : q;
-    const turn = await fetch("/api/session/turn", {
+    const uploadResults = await Promise.allSettled(
+      files.map(async (file) => {
+        const form = new FormData();
+        form.append("file", file);
+        const uploaded = await fetch("/api/artifacts", {
+          method: "POST",
+          body: form,
+        });
+        if (!uploaded.ok) {
+          const error = (await uploaded.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(error.error ?? `Could not upload ${file.name}.`);
+        }
+        const body = (await uploaded.json()) as {
+          artifact: { id: string; filename: string };
+        };
+        return { id: body.artifact.id, name: body.artifact.filename };
+      }),
+    );
+    const artifacts = uploadResults.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    );
+    const failedUpload = uploadResults.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (failedUpload) {
+      await discardArtifacts(artifacts);
+      throw failedUpload.reason instanceof Error
+        ? failedUpload.reason
+        : new Error("Could not upload every attached file.");
+    }
+    const kind = artifacts.length ? "file_ingest" : "question";
+    const started = await fetch("/api/runs", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId: session.id, message: prompt }),
+      body: JSON.stringify({ sessionId: session.id, kind }),
     });
+    if (!started.ok) {
+      await discardArtifacts(artifacts);
+      throw new Error("Could not create an observable agent run.");
+    }
+    const { run } = (await started.json()) as { run: AgentRun };
+    const displayMessage =
+      q || `Inspect ${artifacts.map((artifact) => artifact.name).join(", ")}`;
+    setActiveRunId(run.id);
+    setTurns((current) => [
+      ...current,
+      {
+        id: run.id,
+        q: displayMessage,
+        a: "",
+        attachments: artifacts,
+        run,
+        events: [],
+      },
+    ]);
+    const prompt = board
+      ? `${displayMessage}\n\nCurrent board id: ${board.id}. Use query_lake or query_sql and present_chart. userId is cfo.`
+      : displayMessage;
+    const artifactContext = artifacts.length
+      ? `\n\nThis is file ingestion run ${run.id}. Process every quarantined artifact through inspect_file, sandbox validation, get_mapping_proposal, and approval-gated apply_mapping:\n${artifacts
+          .map((artifact) => `- artifactId=${artifact.id} name=${artifact.name}`)
+          .join("\n")}`
+      : "";
+    let turn: Response;
+    try {
+      turn = await fetch("/api/session/turn", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionId: session.id,
+          runId: run.id,
+          kind,
+          displayMessage,
+          message: `${prompt}${artifactContext}`,
+        }),
+      });
+    } catch (error) {
+      await markRunFailed(run.id, "Agent turn request could not reach the server.");
+      throw error;
+    }
     if (!turn.ok) {
+      await markRunFailed(run.id, "Agent turn failed before completion.");
       setAgent("error", "The query turn failed.");
-      return;
+      throw new Error("The agent turn failed.");
     }
     const result = (await turn.json()) as {
       status: AgentStatus;
       output: string;
+      runId?: string;
+      events?: RunEvent[];
       pendingApprovals?: {
         threadId: string;
         toolCallId: string;
@@ -220,7 +514,13 @@ export function AppShell({ children }: Props) {
     };
     setPendingTf(result.pendingApprovals ?? []);
     const answer = result.output?.trim() || "Turn finished.";
-    setTurns((prev) => [...prev, { q, a: answer }]);
+    setTurns((current) =>
+      current.map((item) =>
+        item.id === run.id
+          ? { ...item, a: answer, events: result.events ?? item.events }
+          : item,
+      ),
+    );
     if (result.charts?.length) {
       setLastCharts(
         result.charts.map((c) => ({
@@ -239,14 +539,31 @@ export function AppShell({ children }: Props) {
     );
   }
 
+  async function submitAgent(q: string, files: File[]) {
+    try {
+      await ask(q, files);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not start the agent.";
+      setAgent("error", message);
+      throw error;
+    }
+  }
+
   async function resolveRail(decision: "approved" | "denied") {
     const hadPublish = Boolean(publishId);
+    const hadTfApproval = pendingTf.length > 0;
     if (tfSession && pendingTf.length) {
+      if (!activeRunId) {
+        setAgent("error", "No active run is available for this approval.");
+        return;
+      }
       const approved = await fetch("/api/session/approve", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           sessionId: tfSession,
+          runId: activeRunId,
           approvals: pendingTf.map((p) => ({
             threadId: p.threadId,
             toolCallId: p.toolCallId,
@@ -262,14 +579,45 @@ export function AppShell({ children }: Props) {
           toolCallId: string;
           name?: string;
         }[];
+        runId?: string;
+        events?: RunEvent[];
+        charts?: { title: string; query: Record<string, unknown> }[];
         error?: string;
       };
       setPendingTf(summary.pendingApprovals ?? []);
+      if (summary.runId && summary.events) {
+        setTurns((current) =>
+          current.map((turn) =>
+            turn.id === summary.runId
+              ? {
+                  ...turn,
+                  a: summary.output ?? answerFromEvents(summary.events ?? []),
+                  events: summary.events,
+                }
+              : turn,
+          ),
+        );
+      }
+      if (summary.charts?.length) {
+        setLastCharts(
+          summary.charts.map((chart) => ({
+            title: chart.title,
+            query: {
+              metric: String(chart.query.metric ?? "revenue"),
+              grain: String(chart.query.grain ?? "period") as LakeQuery["grain"],
+              filters: (chart.query.filters ?? {
+                scenario: "actual",
+              }) as LakeQuery["filters"],
+            },
+          })),
+        );
+      }
       if (!approved.ok || summary.status === "error") {
         setAgent("error", summary.output ?? summary.error ?? "Approval turn failed.");
         return;
       }
       if (summary.status === "waiting_approval") {
+        await hydrateRuns(tfSession);
         setAgent(
           "waiting_approval",
           summary.output || "Still waiting for approval.",
@@ -297,6 +645,7 @@ export function AppShell({ children }: Props) {
           : "Approval sent."
         : "Publish denied. Personal draft kept.",
     );
+    if (tfSession && hadTfApproval) await hydrateRuns(tfSession);
     await refreshBoard();
   }
 
@@ -402,11 +751,6 @@ export function AppShell({ children }: Props) {
               }}
               canEdit
             />
-            <QueryBar
-              disabled={queryDisabled}
-              reason={queryReason}
-              onSubmit={(q) => void ask(q)}
-            />
           </header>
           {mode === "edit" ? (
             <p className="edit-strip">
@@ -423,6 +767,9 @@ export function AppShell({ children }: Props) {
             ...(publishId ? ["Publish board"] : []),
             ...pendingTf.map((action) => action.name ?? "Sensitive tool action"),
           ]}
+          disabled={queryDisabled}
+          disabledReason={queryReason}
+          onSubmit={submitAgent}
           onApprove={() => void resolveRail("approved")}
           onDeny={() => void resolveRail("denied")}
         />

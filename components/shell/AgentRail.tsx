@@ -1,16 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { AgentComposer } from "@/components/shell/AgentComposer";
+import { MarkdownReply } from "@/components/shell/MarkdownReply";
+import { RunCard } from "@/components/shell/RunCard";
+import type { AgentRun, RunEvent } from "@/lib/runs/types";
 
 export type AgentStatus = "idle" | "running" | "waiting_approval" | "done" | "error";
 
 type Props = {
   status: AgentStatus;
   detail: string;
-  turns?: { q: string; a: string }[];
+  turns?: AgentTurn[];
   pendingActions?: string[];
+  disabled?: boolean;
+  disabledReason?: string;
+  onSubmit?: (message: string, files: File[]) => Promise<void>;
   onApprove?: () => void;
   onDeny?: () => void;
+};
+
+export type AgentTurn = {
+  id: string;
+  q: string;
+  a: string;
+  attachments?: { id: string; name: string }[];
+  run?: AgentRun;
+  events?: RunEvent[];
 };
 
 const labels: Record<AgentStatus, string> = {
@@ -26,6 +42,9 @@ export function AgentRail({
   detail,
   turns,
   pendingActions,
+  disabled,
+  disabledReason,
+  onSubmit,
   onApprove,
   onDeny,
 }: Props) {
@@ -64,15 +83,27 @@ export function AgentRail({
       </div>
       <div className="agent-transcript">
         {turns?.length
-          ? turns.map((t, i) => (
-              <article key={i} className="turn">
+          ? turns.map((t) => (
+              <article key={t.id} className="turn">
                 <p className="turn-q">{t.q}</p>
-                <p className="turn-a">{t.a}</p>
+                {t.attachments?.length ? (
+                  <ul className="turn-files" aria-label="Files sent to the agent">
+                    {t.attachments.map((file) => (
+                      <li key={file.id}>{file.name}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {t.a ? <MarkdownReply>{t.a}</MarkdownReply> : null}
+                {t.run ? (
+                  <RunCard run={t.run} events={t.events ?? []} />
+                ) : null}
               </article>
             ))
           : null}
         {!turns?.length || detail !== turns.at(-1)?.a ? (
-          <p className="agent-detail">{detail}</p>
+          <div className="agent-detail">
+            <MarkdownReply>{detail}</MarkdownReply>
+          </div>
         ) : null}
       </div>
       {isApproval ? (
@@ -88,6 +119,21 @@ export function AgentRail({
             {isPublish ? "Deny publish" : "Deny action"}
           </button>
         </div>
+      ) : null}
+      {onSubmit ? (
+        <AgentComposer
+          disabled={
+            disabled || status === "running" || status === "waiting_approval"
+          }
+          reason={
+            status === "running"
+              ? "The agent is working. You can inspect live activity above."
+              : status === "waiting_approval"
+                ? "Resolve the pending action before starting another run."
+              : disabledReason
+          }
+          onSubmit={onSubmit}
+        />
       ) : null}
     </aside>
   );

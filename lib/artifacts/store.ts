@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 
@@ -159,4 +159,24 @@ export function updateArtifactStatus(
   const artifact = getArtifact(db, artifactId);
   if (!artifact) throw new Error("Artifact not found");
   return artifact;
+}
+
+export function discardQuarantinedArtifact(
+  db: DatabaseSync,
+  artifactId: string,
+  ownerId: string,
+): void {
+  const row = artifactRow(db, artifactId);
+  if (
+    !row ||
+    row.owner_id !== ownerId ||
+    row.status !== "quarantined"
+  ) {
+    throw new Error("Quarantined artifact not found");
+  }
+  const root = resolve(/*turbopackIgnore: true*/ artifactRoot());
+  const path = resolve(root, row.storage_key);
+  if (!path.startsWith(`${root}/`)) throw new Error("Invalid artifact storage key");
+  unlinkSync(path);
+  db.prepare("DELETE FROM file_artifacts WHERE id = ?").run(artifactId);
 }

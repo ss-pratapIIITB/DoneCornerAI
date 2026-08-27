@@ -12,4 +12,8 @@ test("signal room prioritizes exceptions and agent work", async ({ page }) => {
   await expect(page.getByText("Primary exception")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Exception queue" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "TrueForge agent" })).toBeVisible();
+  const agent = page.locator(".agent-rail");
+  await expect(agent.getByRole("textbox", { name: "Ask the agent" })).toBeVisible();
+  await expect(agent.getByRole("button", { name: "Attach CSV" })).toBeVisible();
+  await expect(page.locator(".topbar").getByRole("textbox")).toHaveCount(0);
 });

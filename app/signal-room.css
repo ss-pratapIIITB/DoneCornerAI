@@ -643,6 +643,319 @@ body {
   background: transparent;
 }
 
+.markdown-reply {
+  color: var(--paper);
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+  line-height: 1.58;
+}
+
+.markdown-reply > :first-child {
+  margin-top: 0;
+}
+
+.markdown-reply > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-reply p,
+.markdown-reply ul,
+.markdown-reply ol,
+.markdown-reply pre,
+.markdown-reply table {
+  margin: 0.55rem 0;
+}
+
+.markdown-reply h1,
+.markdown-reply h2,
+.markdown-reply h3 {
+  margin: 0.9rem 0 0.35rem;
+  color: var(--paper);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.markdown-reply ul,
+.markdown-reply ol {
+  padding-left: 1.2rem;
+}
+
+.markdown-reply a {
+  color: var(--cyan);
+  text-underline-offset: 0.18rem;
+}
+
+.markdown-reply code {
+  padding: 0.08rem 0.22rem;
+  background: var(--ink);
+  color: var(--focus);
+  font-size: 0.65rem;
+}
+
+.markdown-reply pre {
+  max-width: 100%;
+  padding: 0.55rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  white-space: pre;
+}
+
+.markdown-reply table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-reply th,
+.markdown-reply td {
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.turn-files,
+.composer-files,
+.run-events {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.turn-files {
+  display: flex;
+  margin: 0.35rem 0 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.turn-files li {
+  padding: 0.2rem 0.35rem;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.run-card {
+  margin-top: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.run-card > summary {
+  display: grid;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.55rem;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  color: var(--paper);
+  font-size: 0.65rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.run-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.run-stage,
+.run-state {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.run-state[data-run-status="running"],
+.run-state[data-run-status="waiting_approval"] {
+  color: var(--gold);
+}
+
+.run-state[data-run-status="error"],
+.run-state[data-run-status="cancelled"] {
+  color: var(--danger);
+}
+
+.run-events {
+  border-top: 1px solid var(--line);
+}
+
+.run-events > li {
+  padding: 0.5rem 0.55rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.run-events > li:last-child {
+  border-bottom: 0;
+}
+
+.run-event-line {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.run-event-line > span,
+.run-event-line time {
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.run-event-line p {
+  margin: 0;
+  color: var(--paper);
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+.run-event-details {
+  margin: 0.35rem 0 0 3.85rem;
+}
+
+.run-event-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.run-event-details pre {
+  max-height: 14rem;
+  margin: 0.35rem 0 0;
+  padding: 0.45rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--muted);
+  font-size: 0.65rem;
+  white-space: pre-wrap;
+}
+
+.run-empty {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.agent-composer {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.composer-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.agent-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 4.75rem;
+  resize: vertical;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  outline: 0;
+  background: var(--ink);
+  color: var(--paper);
+  caret-color: var(--gold);
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.agent-composer textarea:focus {
+  border-color: var(--gold);
+}
+
+.agent-composer textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.composer-actions {
+  display: grid;
+  margin-top: 0.4rem;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.composer-actions button {
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.composer-actions button[type="submit"]:not(:disabled) {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.composer-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.composer-actions kbd {
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.65rem;
+}
+
+.composer-files {
+  margin-bottom: 0.55rem;
+}
+
+.composer-files li {
+  display: flex;
+  min-height: 1.9rem;
+  padding: 0.25rem 0.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  color: var(--paper);
+  font-size: 0.64rem;
+}
+
+.composer-files button {
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.65rem;
+}
+
+.composer-note,
+.composer-error {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+.composer-error {
+  color: var(--danger);
+}
+
 .pin-menu {
   gap: 0.3rem;
 }
@@ -779,12 +1092,21 @@ body {
 
   .agent-rail[data-expanded="false"] .agent-capabilities,
   .agent-rail[data-expanded="false"] .agent-transcript,
-  .agent-rail[data-expanded="false"] .approval-actions {
+  .agent-rail[data-expanded="false"] .approval-actions,
+  .agent-rail[data-expanded="false"] .agent-composer {
     display: none;
   }
 
   .agent-rail[data-expanded="true"] .agent-transcript {
-    max-height: 36vh;
+    max-height: 31vh;
+  }
+
+  .agent-composer textarea {
+    min-height: 4rem;
+  }
+
+  .composer-actions button {
+    min-height: 2.75rem;
   }
 
   .canvas {

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
   createArtifact,
+  discardQuarantinedArtifact,
   getArtifact,
   readArtifact,
 } from "@/lib/artifacts/store";
@@ -64,5 +65,23 @@ describe("artifact quarantine", () => {
     );
 
     expect(() => readArtifact(db, artifact.id, "cfo")).toThrow(/checksum/i);
+  });
+
+  it("lets the owner discard a partial quarantined upload", () => {
+    const { db, root } = setup();
+    const artifact = createArtifact(db, {
+      ownerId: "cfo",
+      filename: "partial.csv",
+      mediaType: "text/csv",
+      bytes: Buffer.from("period,amount\n2026-01,42"),
+    });
+
+    expect(() =>
+      discardQuarantinedArtifact(db, artifact.id, "fpna"),
+    ).toThrow(/not found/i);
+    discardQuarantinedArtifact(db, artifact.id, "cfo");
+
+    expect(getArtifact(db, artifact.id)).toBeNull();
+    expect(readdirSync(join(root, "quarantine"))).toEqual([]);
   });
 });

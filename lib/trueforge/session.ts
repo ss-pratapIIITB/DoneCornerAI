@@ -16,6 +16,11 @@ import {
   bindAgentSession,
   isAgentSessionOwner,
 } from "@/lib/runs/sessions";
+import {
+  chartsFromRunEvents,
+  outputFromRunEvents,
+  pendingApprovalsFromRunEvents,
+} from "@/lib/runs/replay";
 import type { RunEvent, RunKind, RunStatus } from "@/lib/runs/types";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
 import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
@@ -229,7 +234,12 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
 export async function runUserTurn(
   sessionId: string,
   message: string,
-  options: { runId?: string; kind?: RunKind; userId: string },
+  options: {
+    runId?: string;
+    kind?: RunKind;
+    userId: string;
+    displayMessage?: string;
+  },
 ): Promise<TurnSummary> {
   const client = trueforge();
   const db = getDb();
@@ -239,8 +249,8 @@ export async function runUserTurn(
   appendRunEvent(db, runId, {
     type: "user.message",
     stage: "input",
-    summary: message,
-    details: { content: message },
+    summary: options.displayMessage ?? message,
+    details: { content: options.displayMessage ?? message },
   });
   const stream = await client.sessions.createTurnStream(sessionId, {
     input: [{ type: "user.message", content: message }],
@@ -268,10 +278,6 @@ export async function runApprovalTurn(
     kind: "question",
     userId,
   });
-  updateRun(db, activeRunId, {
-    status: "running",
-    currentStage: "approval",
-  });
   const stream = await client.sessions.createTurnStream(sessionId, {
     input: approvals.map((a) => ({
       type: "user.tool_approval" as const,
@@ -281,6 +287,22 @@ export async function runApprovalTurn(
         ? { status: "allow" as const }
         : { status: "deny" as const, reason: a.reason ?? "denied" },
     })),
+  });
+  for (const approval of approvals) {
+    appendRunEvent(db, activeRunId, {
+      type: "approval.resolved",
+      stage: "approval",
+      summary: approval.allow ? "Tool action approved" : "Tool action denied",
+      details: {
+        threadId: approval.threadId,
+        toolCallId: approval.toolCallId,
+        allow: approval.allow,
+      },
+    });
+  }
+  updateRun(db, activeRunId, {
+    status: "running",
+    currentStage: "approval",
   });
   return collectTurn(stream, activeRunId);
 }
@@ -327,7 +349,34 @@ function stateForEvent(event: RunEvent): {
   return { currentStage: event.stage };
 }
 
-async function collectTurn(
+function turnStatusFromRun(
+  status: RunStatus | undefined,
+): TurnSummary["status"] {
+  if (status === "waiting_approval") return "waiting_approval";
+  if (status === "done") return "done";
+  if (status === "running" || status === "queued") return "running";
+  return "error";
+}
+
+function summaryFromPersistedRun(
+  db: ReturnType<typeof getDb>,
+  runId: string,
+): TurnSummary {
+  const run = getRun(db, runId);
+  const events = listRunEvents(db, runId);
+  const status = turnStatusFromRun(run?.status);
+  return {
+    status,
+    output: outputFromRunEvents(events),
+    pendingApprovals:
+      status === "waiting_approval" ? pendingApprovalsFromRunEvents(events) : [],
+    charts: chartsFromRunEvents(events),
+    runId,
+    events,
+  };
+}
+
+export async function collectTurn(
   stream: AsyncIterable<unknown>,
   runId: string,
 ): Promise<TurnSummary> {
@@ -335,8 +384,19 @@ async function collectTurn(
   const db = getDb();
   migrate(db);
   const context = createNormalizationContext();
+  let interrupted = false;
   try {
     for await (const item of stream) {
+      const current = getRun(db, runId);
+      if (
+        current &&
+        (current.status === "done" ||
+          current.status === "error" ||
+          current.status === "cancelled")
+      ) {
+        interrupted = true;
+        break;
+      }
       rawEvents.push(item);
       for (const normalized of normalizeTrueForgeEvent(item, context)) {
         const persisted = appendRunEvent(db, runId, normalized);
@@ -344,6 +404,15 @@ async function collectTurn(
       }
     }
   } catch (err) {
+    const current = getRun(db, runId);
+    if (
+      current &&
+      (current.status === "done" ||
+        current.status === "error" ||
+        current.status === "cancelled")
+    ) {
+      return summaryFromPersistedRun(db, runId);
+    }
     const message = err instanceof Error ? err.message : "Turn failed";
     appendRunEvent(db, runId, {
       type: "run.failed",
@@ -361,6 +430,7 @@ async function collectTurn(
       events: listRunEvents(db, runId),
     };
   }
+  if (interrupted) return summaryFromPersistedRun(db, runId);
   return {
     ...summarizeTurnEvents(rawEvents),
     runId,
