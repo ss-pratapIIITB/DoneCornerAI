@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { redactRunDetails } from "@/lib/runs/redact";
+import { redactRunDetails, redactRunSummary } from "@/lib/runs/redact";
 import type {
   AgentRun,
   NewRunEvent,
@@ -136,6 +136,7 @@ export function appendRunEvent(
   const id = randomUUID();
   const createdAt = new Date().toISOString();
   const details = redactRunDetails(event.details);
+  const summary = redactRunSummary(event.summary);
   db.exec("BEGIN IMMEDIATE");
   try {
     const row = db
@@ -154,7 +155,7 @@ export function appendRunEvent(
       sequence,
       event.type,
       event.stage,
-      event.summary,
+      summary,
       JSON.stringify(details),
       createdAt,
     );
@@ -165,7 +166,7 @@ export function appendRunEvent(
       sequence,
       type: event.type,
       stage: event.stage,
-      summary: event.summary,
+      summary,
       details,
       createdAt,
     };

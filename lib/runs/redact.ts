@@ -25,3 +25,17 @@ export function redactRunDetails(
 ): Record<string, unknown> {
   return redactValue(details, 0) as Record<string, unknown>;
 }
+
+export function redactRunSummary(summary: string): string {
+  return summary
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+    .replace(
+      /\b(password|secret|token|api[ _-]?key)\s*[:=]\s*[^\s,;]+/gi,
+      "$1=[redacted]",
+    )
+    .replace(
+      /(?:\/Users\/|\/home\/)[^\s,;]+/g,
+      "[redacted-path]",
+    )
+    .slice(0, 1_000);
+}

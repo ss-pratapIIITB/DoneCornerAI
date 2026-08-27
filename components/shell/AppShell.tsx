@@ -337,6 +337,7 @@ export function AppShell({ children }: Props) {
       "running",
       files.length ? "Quarantining attached files…" : "Starting agent run…",
     );
+    setLastCharts([]);
     const created = await fetch("/api/session", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -564,13 +565,16 @@ export function AppShell({ children }: Props) {
 
   const pinChart = useCallback(
     async (chart: AgentChart, boardId?: string) => {
+      if (mode !== "edit") {
+        throw new Error("Switch to Edit before pinning a chart.");
+      }
       let target = board;
       if (boardId) {
         const res = await fetch(`/api/dashboards?id=${encodeURIComponent(boardId)}`);
         if (res.ok) target = (await res.json()) as Dashboard;
       }
       if (!target || target.owner === "org") {
-        target = await enterEdit();
+        throw new Error("Choose a personal dashboard before pinning.");
       }
       const next = {
         ...target,
@@ -593,7 +597,7 @@ export function AppShell({ children }: Props) {
       await saveBoard(next);
       setAgent("done", `Pinned “${chart.title}” to ${next.name}.`);
     },
-    [board, enterEdit, saveBoard, setAgent],
+    [board, mode, saveBoard, setAgent],
   );
 
   const value = useMemo(

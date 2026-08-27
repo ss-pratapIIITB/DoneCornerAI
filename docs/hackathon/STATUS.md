@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Build (agentic ingestion + observable workspace)
 
-**Current step:** Observable ingestion and the unified agent workspace are implemented. Next slice: validated agent-designed dashboard DSL and editable prompt guidance.
+**Current step:** Observable ingestion and the unified agent workspace are implemented. Qodo High findings and the first PR #11 Medium follow-up batch are fixed; PR #12 Medium findings are next before dashboard DSL.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 

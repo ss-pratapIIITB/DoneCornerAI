@@ -39,6 +39,15 @@ describe("lake drill path", () => {
     expect(prevLakeGrain("group")).toBe("period");
   });
 
+  it("removes the selected ancestor when drilling up", () => {
+    const group = drillLake(base, "2025-03");
+    const vertical = drillLake(group, "Northstar Group");
+    const up = drillLakeUp(vertical);
+    expect(up.grain).toBe("group");
+    expect(up.filters.group).toBeUndefined();
+    expect(up.filters.period).toEqual(["2025-03"]);
+  });
+
   it("drills a P&L cell into that period and account at group grain", () => {
     const next = drillPnlCell(base, "2025-04", "sm");
     expect(next.metric).toBe("sm");

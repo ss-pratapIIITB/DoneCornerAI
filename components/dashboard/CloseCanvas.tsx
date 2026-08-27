@@ -48,32 +48,43 @@ export function CloseCanvas() {
   const [pnl, setPnl] = useState<PnlData | null>(null);
   const [budgetPnl, setBudgetPnl] = useState<PnlData | null>(null);
 
-  const runLake = useCallback(async (q: LakeQuery) => {
-    const res = await fetch("/api/lake/query", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(q),
-    });
-    if (!res.ok) return;
-    const body = (await res.json()) as { rows: LakeRow[] };
-    setRows(body.rows ?? []);
+  const runLake = useCallback(async (q: LakeQuery, signal?: AbortSignal) => {
+    try {
+      const res = await fetch("/api/lake/query", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(q),
+        signal,
+      });
+      if (!res.ok) return;
+      const body = (await res.json()) as { rows: LakeRow[] };
+      setRows(body.rows ?? []);
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") throw error;
+    }
   }, []);
 
-  const fetchPnl = useCallback(async (filters: LakeQuery["filters"]) => {
-    const res = await fetch("/api/lake/query", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ view: "pnl", filters }),
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as PnlData;
+  const fetchPnl = useCallback(async (filters: LakeQuery["filters"], signal?: AbortSignal) => {
+    try {
+      const res = await fetch("/api/lake/query", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ view: "pnl", filters }),
+        signal,
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as PnlData;
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return null;
+      throw error;
+    }
   }, []);
 
   const runPnl = useCallback(
-    async (filters: LakeQuery["filters"]) => {
+    async (filters: LakeQuery["filters"], signal?: AbortSignal) => {
       const [actual, budget] = await Promise.all([
-        fetchPnl({ ...filters, scenario: "actual" }),
-        fetchPnl({ ...filters, scenario: "budget" }),
+        fetchPnl({ ...filters, scenario: "actual" }, signal),
+        fetchPnl({ ...filters, scenario: "budget" }, signal),
       ]);
       if (actual) setPnl(actual);
       if (budget) setBudgetPnl(budget);
@@ -104,10 +115,12 @@ export function CloseCanvas() {
   }
 
   useEffect(() => {
+    const controller = new AbortController();
     // Fetch callbacks update state only after network responses resolve.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void runLake(query);
-    void runPnl(query.filters);
+    void runLake(query, controller.signal);
+    void runPnl(query.filters, controller.signal);
+    return () => controller.abort();
   }, [query, runLake, runPnl]);
 
   const latestPeriod = pnl?.periods.at(-1);
@@ -282,6 +295,7 @@ export function CloseCanvas() {
             <AgentChartBlock
               key={`${c.title}-${i}`}
               spec={c}
+              canPin={mode === "edit"}
               onPin={(boardId) => pinChart(c, boardId)}
             />
           ))}
@@ -316,13 +330,19 @@ function PinnedLakeWidget({ widget }: { widget: Widget }) {
   const [query, setQuery] = useState<LakeQuery>(lakeFromWidget(widget));
   const [rows, setRows] = useState<LakeRow[]>([]);
   useEffect(() => {
+    const controller = new AbortController();
     void fetch("/api/lake/query", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(query),
+      signal: controller.signal,
     })
-      .then((r) => r.json())
-      .then((body: { rows?: LakeRow[] }) => setRows(body.rows ?? []));
+      .then((response) => (response.ok ? response.json() : { rows: [] }))
+      .then((body: { rows?: LakeRow[] }) => setRows(body.rows ?? []))
+      .catch((error: Error) => {
+        if (error.name !== "AbortError") setRows([]);
+      });
+    return () => controller.abort();
   }, [query]);
   return (
     <WidgetFrame
@@ -337,26 +357,34 @@ function PinnedLakeWidget({ widget }: { widget: Widget }) {
 
 function AgentChartBlock({
   spec,
+  canPin,
   onPin,
 }: {
   spec: { title: string; query: LakeQuery };
+  canPin: boolean;
   onPin: (boardId?: string) => Promise<void>;
 }) {
   const [rows, setRows] = useState<LakeRow[]>([]);
   const [query, setQuery] = useState<LakeQuery>(spec.query);
   useEffect(() => {
+    const controller = new AbortController();
     void fetch("/api/lake/query", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(query),
+      signal: controller.signal,
     })
-      .then((r) => r.json())
-      .then((body: { rows?: LakeRow[] }) => setRows(body.rows ?? []));
+      .then((response) => (response.ok ? response.json() : { rows: [] }))
+      .then((body: { rows?: LakeRow[] }) => setRows(body.rows ?? []))
+      .catch((error: Error) => {
+        if (error.name !== "AbortError") setRows([]);
+      });
+    return () => controller.abort();
   }, [query]);
   return (
     <WidgetFrame
       title={spec.title}
-      extra={<PinChartMenu onPin={onPin} />}
+      extra={<PinChartMenu onPin={onPin} disabled={!canPin} />}
       onExportCsv={() => downloadCsv(`${spec.title}.csv`, rows)}
     >
       <LakeChart query={query} rows={rows} onQueryChange={setQuery} />

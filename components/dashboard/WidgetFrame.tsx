@@ -101,11 +101,19 @@ export function WidgetFrame({
     downloadSvgAsPng(svg, `${title.replace(/\s+/g, "-").toLowerCase()}.png`);
   }
 
+  function exportCsv() {
+    if (!onExportCsv) return;
+    const approved = window.confirm(
+      `Export “${title}” as CSV? The file may contain sensitive finance data.`,
+    );
+    if (approved) onExportCsv();
+  }
+
   const actions = (forLightbox: boolean) => (
     <div className="widget-frame-actions">
       {extra}
       {onExportCsv ? (
-        <button type="button" onClick={onExportCsv}>
+        <button type="button" onClick={exportCsv}>
           Export CSV
         </button>
       ) : null}
