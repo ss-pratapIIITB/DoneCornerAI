@@ -67,6 +67,10 @@ export function savePersonalDashboard(
   if (d.owner === "org" || d.id === "org-close") {
     throw new Error("Cannot save over org Close; fork first");
   }
+  const existing = getDashboard(db, d.id);
+  if (existing && existing.owner !== userId) {
+    throw new Error("Dashboard is owned by another user");
+  }
   return upsert(db, { ...d, owner: userId });
 }
 

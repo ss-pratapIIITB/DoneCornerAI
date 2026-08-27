@@ -1,23 +1,33 @@
 import { describeSchema } from "@/lib/cube/schema";
 import type { CubeQuery } from "@/lib/cube/query";
 import type { MetricId } from "@/lib/cube/types";
+import type {
+  DashboardDataShape,
+  DashboardPrimitiveId,
+  DashboardProvenance,
+} from "@/lib/dashboards/dsl";
+import type { LakeGrain, LakeQuery } from "@/lib/lake/types";
 
 export type WidgetType = "kpi" | "bar" | "line" | "table" | "pnl_table";
 
-export type WidgetLayout = { w: number; h: number };
+export type WidgetLayout = { x?: number; y?: number; w: number; h: number };
 
 export type Widget = {
   id: string;
   type: WidgetType;
   title: string;
-  query: CubeQuery;
+  query: CubeQuery | LakeQuery;
   note: string;
   layout?: WidgetLayout;
-  lake?: {
-    metric: string;
-    grain: string;
-    filters: Record<string, unknown>;
-  };
+  lake?: LakeQuery;
+  primitive?: DashboardPrimitiveId;
+  rendererVersion?: number;
+  purpose?: string;
+  whyThisVisualization?: string;
+  dataShape?: DashboardDataShape;
+  pointLimit?: number;
+  drillPath?: LakeGrain[];
+  provenance?: DashboardProvenance;
 };
 
 export type Dashboard = {
