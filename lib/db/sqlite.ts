@@ -115,5 +115,27 @@ export function migrate(db: DatabaseSync): void {
       created_at TEXT NOT NULL,
       consumed_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS prompt_versions (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      objective TEXT NOT NULL,
+      business_context TEXT NOT NULL,
+      materiality TEXT NOT NULL,
+      dashboard_preferences TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS prompt_versions_owner_created
+      ON prompt_versions(owner_id, created_at DESC);
+    CREATE TABLE IF NOT EXISTS lake_load_approvals (
+      tool_call_id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL REFERENCES agent_runs(id),
+      user_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      consumed_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS lake_load_approvals_run
+      ON lake_load_approvals(run_id, user_id, created_at DESC);
   `);
 }

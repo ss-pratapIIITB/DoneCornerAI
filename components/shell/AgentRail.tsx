@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AgentComposer } from "@/components/shell/AgentComposer";
 import { MarkdownReply } from "@/components/shell/MarkdownReply";
+import { PromptWorkspace } from "@/components/shell/PromptWorkspace";
 import { RunCard } from "@/components/shell/RunCard";
 import type { AgentRun, RunEvent } from "@/lib/runs/types";
 
@@ -15,6 +16,7 @@ type Props = {
   pendingActions?: string[];
   disabled?: boolean;
   disabledReason?: string;
+  canEditPrompt?: boolean;
   onSubmit?: (message: string, files: File[]) => Promise<void>;
   onApprove?: () => void;
   onDeny?: () => void;
@@ -44,11 +46,13 @@ export function AgentRail({
   pendingActions,
   disabled,
   disabledReason,
+  canEditPrompt,
   onSubmit,
   onApprove,
   onDeny,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
   const isApproval = status === "waiting_approval";
   const actionLabel = pendingActions?.length
     ? pendingActions.join(", ")
@@ -61,13 +65,13 @@ export function AgentRail({
     <aside
       className="agent-rail"
       aria-live="polite"
-      data-expanded={expanded || isApproval}
+      data-expanded={expanded || isApproval || promptOpen}
     >
       <div className="agent-rail-head">
         <button
           type="button"
           className="agent-rail-toggle"
-          aria-expanded={expanded || isApproval}
+          aria-expanded={expanded || isApproval || promptOpen}
           onClick={() => setExpanded((value) => !value)}
         >
           <h2>TrueForge agent</h2>
@@ -75,12 +79,24 @@ export function AgentRail({
             {labels[status]}
           </span>
         </button>
+        <button
+          type="button"
+          className="prompt-open"
+          aria-expanded={promptOpen}
+          onClick={() => {
+            setPromptOpen((value) => !value);
+            setExpanded(true);
+          }}
+        >
+          Prompt
+        </button>
       </div>
       <div className="agent-capabilities" aria-label="Agent capabilities">
         <span>MCP linked</span>
         <span>Sandbox ready</span>
         <span>Session persistent</span>
       </div>
+      {promptOpen ? <PromptWorkspace canEdit={Boolean(canEditPrompt)} /> : null}
       <div className="agent-transcript">
         {turns?.length
           ? turns.map((t) => (

@@ -18,7 +18,7 @@ describe("lake sample reset route", () => {
     expect(response.status).toBe(403);
   });
 
-  it("rejects an unconfirmed editor reset", async () => {
+  it("rejects an editor reset that is not an approved load_lake outcome", async () => {
     const response = await POST(
       new Request("http://localhost/api/lake/load", {
         method: "POST",
@@ -26,9 +26,12 @@ describe("lake sample reset route", () => {
           "content-type": "application/json",
           "x-demo-user": "cfo",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ confirm: true }),
       }),
     );
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringMatching(/load_lake/i),
+    });
   });
 });

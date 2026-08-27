@@ -105,6 +105,18 @@ export function getRun(db: DatabaseSync, runId: string): AgentRun | null {
   return row ? toRun(row) : null;
 }
 
+export function bindRunPromptVersion(
+  db: DatabaseSync,
+  runId: string,
+  promptVersionId: string,
+): void {
+  db.prepare(
+    `UPDATE agent_runs
+     SET prompt_version_id = ?
+     WHERE id = ?`,
+  ).run(promptVersionId, runId);
+}
+
 export function updateRun(
   db: DatabaseSync,
   runId: string,

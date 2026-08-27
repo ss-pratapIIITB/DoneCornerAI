@@ -4,6 +4,10 @@ import {
   authorizeMappingFromRunApproval,
   revokeMappingApproval,
 } from "@/lib/mapping/approvals";
+import {
+  authorizeLakeLoadFromRunApproval,
+  revokeLakeLoadApproval,
+} from "@/lib/lake/approvals";
 import { probeTrueForge, runApprovalTurn } from "@/lib/trueforge/session";
 
 export const runtime = "nodejs";
@@ -32,6 +36,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     const user = userFromRequest(req);
     const authorizedProposals: string[] = [];
+    const authorizedLakeLoads: string[] = [];
     const db = getDb();
     migrate(db);
     try {
@@ -45,6 +50,15 @@ export async function POST(req: Request): Promise<Response> {
         if (mapping?.status === "approved") {
           authorizedProposals.push(mapping.proposalId);
         }
+        const lake = authorizeLakeLoadFromRunApproval(db, {
+          runId: body.runId,
+          userId: user.id,
+          toolCallId: approval.toolCallId,
+          allow: approval.allow,
+        });
+        if (lake?.status === "approved") {
+          authorizedLakeLoads.push(lake.toolCallId);
+        }
       }
       const result = await runApprovalTurn(
         body.sessionId,
@@ -56,11 +70,17 @@ export async function POST(req: Request): Promise<Response> {
         for (const proposalId of authorizedProposals) {
           revokeMappingApproval(db, proposalId);
         }
+        for (const toolCallId of authorizedLakeLoads) {
+          revokeLakeLoadApproval(db, toolCallId);
+        }
       }
       return Response.json(result);
     } catch (error) {
       for (const proposalId of authorizedProposals) {
         revokeMappingApproval(db, proposalId);
+      }
+      for (const toolCallId of authorizedLakeLoads) {
+        revokeLakeLoadApproval(db, toolCallId);
       }
       throw error;
     }

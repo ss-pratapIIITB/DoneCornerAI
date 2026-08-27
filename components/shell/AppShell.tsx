@@ -32,6 +32,8 @@ type PortalValue = {
   saveBoard: (next: Dashboard) => Promise<Dashboard>;
   refreshBoard: () => Promise<void>;
   requestPublish: () => Promise<void>;
+  loadSamplePack: () => Promise<number | undefined>;
+  canLoadSamplePack: boolean;
   setAgent: (status: AgentStatus, detail: string) => void;
   lastCharts: AgentChart[];
   pinChart: (chart: AgentChart, boardId?: string) => Promise<void>;
@@ -392,7 +394,7 @@ export function AppShell({ children }: Props) {
     );
   }, [board, enterEdit, setAgent]);
 
-  async function ask(q: string, files: File[] = []) {
+  async function ask(q: string, files: File[] = []): Promise<AgentStatus> {
     setAgent(
       "running",
       files.length ? "Quarantining attached files…" : "Starting agent run…",
@@ -537,6 +539,7 @@ export function AppShell({ children }: Props) {
       result.status === "waiting_approval" ? "waiting_approval" : result.status,
       answer,
     );
+    return result.status === "waiting_approval" ? "waiting_approval" : result.status;
   }
 
   async function submitAgent(q: string, files: File[]) {
@@ -548,6 +551,23 @@ export function AppShell({ children }: Props) {
       setAgent("error", message);
       throw error;
     }
+  }
+
+  async function loadSamplePack(): Promise<number | undefined> {
+    if (agentStatus === "running" || agentStatus === "waiting_approval") {
+      throw new Error(
+        "Wait for the agent to finish or resolve approval before loading the sample pack.",
+      );
+    }
+    const status = await ask(
+      "Request approval to load_lake the sample Northstar close pack with this runId and userId=cfo, then present_chart for revenue by period.",
+    );
+    if (status === "error") {
+      throw new Error(
+        "TrueForge could not load the sample pack. Approve load_lake when the rail pauses.",
+      );
+    }
+    return undefined;
   }
 
   async function resolveRail(decision: "approved" | "denied") {
@@ -694,11 +714,14 @@ export function AppShell({ children }: Props) {
       saveBoard,
       refreshBoard,
       requestPublish,
+      loadSamplePack,
+      canLoadSamplePack:
+        agentStatus !== "running" && agentStatus !== "waiting_approval",
       setAgent,
       lastCharts,
       pinChart,
     }),
-    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, setAgent, lastCharts, pinChart],
+    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, loadSamplePack, agentStatus, setAgent, lastCharts, pinChart],
   );
 
   const routeLabel =
@@ -769,6 +792,7 @@ export function AppShell({ children }: Props) {
           ]}
           disabled={queryDisabled}
           disabledReason={queryReason}
+          canEditPrompt={mode === "edit"}
           onSubmit={submitAgent}
           onApprove={() => void resolveRail("approved")}
           onDeny={() => void resolveRail("denied")}

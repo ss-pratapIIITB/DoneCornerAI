@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   CLOSE_PACK_INSTRUCTIONS,
+  SAFETY_POLICY,
+  TOOL_POLICY,
   closePackModel,
   closePackSpec,
 } from "@/lib/trueforge/agent";
@@ -23,8 +25,21 @@ describe("closePackModel", () => {
     expect(closePackModel()).toBe("openai/gpt-5-5");
   });
 
+  it("gates irreversible lake replace and org publish on TrueForge approval", () => {
+    expect(
+      closePackSpec("openai/gpt-5-4-mini").mcpServers?.[0]?.requireApprovalForTools,
+    ).toEqual(["apply_mapping", "load_lake", "request_publish_org"]);
+  });
+
   it("does not require TrueForge skills that may be unconfigured", () => {
     expect(closePackSpec("openai/gpt-5-4-mini").skills ?? []).toEqual([]);
+  });
+
+  it("puts immutable safety and tool policy on the agent spec, not only in user turns", () => {
+    const instructions = closePackSpec("openai/gpt-5-4-mini").instructions ?? "";
+    expect(instructions).toContain(SAFETY_POLICY);
+    expect(instructions).toContain(TOOL_POLICY);
+    expect(instructions).toContain(CLOSE_PACK_INSTRUCTIONS);
   });
 
   it("locks successful dashboard generation to validate, preview, then personal save", () => {

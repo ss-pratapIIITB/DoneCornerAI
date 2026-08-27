@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Build (prompt control)
 
-**Current step:** Stacked PRs #11–#13 merged. Next is editable CFO guidance and a read-only assembled prompt.
+**Current step:** Slice 5 implemented on `feat/prompt-control`: editable CFO guidance, read-only assembled prompt, TrueForge-bound turns, sample pack via agent with HTTP fallback.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
