@@ -5,6 +5,7 @@ import { describeSchema } from "@/lib/cube/schema";
 import { queryCube, type CubeQuery } from "@/lib/cube/query";
 import { adaptDashboardSpec } from "@/lib/dashboards/adapt";
 import { listDashboardPrimitives } from "@/lib/dashboards/primitives";
+import { validateDashboardProvenance } from "@/lib/dashboards/provenance";
 import { validateDashboardRuntime } from "@/lib/dashboards/runtime";
 import {
   ensureOrgClose,
@@ -174,6 +175,10 @@ export async function callTool(
       if (!validation.valid || !validation.spec) {
         return { valid: false, findings: validation.findings };
       }
+      const provenance = validateDashboardProvenance(db, validation.spec);
+      if (provenance.length) {
+        return { valid: false, findings: provenance };
+      }
       const runtime = await validateDashboardRuntime(
         validation.spec,
         queryLake,
@@ -210,6 +215,12 @@ export async function callTool(
       if (existing && existing.owner !== userId) {
         throw new Error("Dashboard is owned by another user");
       }
+      const provenance = validateDashboardProvenance(db, validation.spec, {
+        ownerId: userId,
+      });
+      if (provenance.length) {
+        return { valid: false, findings: provenance };
+      }
       const runtime = await validateDashboardRuntime(
         validation.spec,
         queryLake,
@@ -217,6 +228,8 @@ export async function callTool(
       if (!runtime.valid) {
         return { valid: false, findings: runtime.findings };
       }
+      // Personal drafts auto-save for the owner. Org overwrite still requires
+      // request_publish_org + human approval.
       const dashboard = adaptDashboardSpec(validation.spec, {
         id: dashboardId,
         owner: userId,

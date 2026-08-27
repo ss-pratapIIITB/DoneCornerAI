@@ -314,7 +314,13 @@ function PrimitiveContent(props: PrimitiveContentProps) {
   );
 }
 
-export function GeneratedDashboardWidget({ widget }: { widget: Widget }) {
+export function GeneratedDashboardWidget({
+  widget,
+  mode,
+}: {
+  widget: Widget;
+  mode: "view" | "edit";
+}) {
   const primitive = widget.primitive;
   const definition = DASHBOARD_PRIMITIVES_V1.find(
     (candidate) => candidate.id === primitive,
@@ -322,6 +328,7 @@ export function GeneratedDashboardWidget({ widget }: { widget: Widget }) {
   const [query, setQuery] = useState<LakeQuery>(() => lakeFromWidget(widget));
   const [rows, setRows] = useState<LakeRow[]>([]);
   const [error, setError] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -335,14 +342,17 @@ export function GeneratedDashboardWidget({ widget }: { widget: Widget }) {
         if (!response.ok) throw new Error("Lake query failed");
         return response.json();
       })
-      .then((body: { rows?: LakeRow[] }) =>
-        setRows((body.rows ?? []).slice(0, widget.pointLimit ?? definition?.maxPoints)),
-      )
+      .then((body: { rows?: LakeRow[] }) => {
+        setError(false);
+        setRows(
+          (body.rows ?? []).slice(0, widget.pointLimit ?? definition?.maxPoints),
+        );
+      })
       .catch((cause: Error) => {
         if (cause.name !== "AbortError") setError(true);
       });
     return () => controller.abort();
-  }, [definition?.maxPoints, query, widget.pointLimit]);
+  }, [definition?.maxPoints, query, reloadToken, widget.pointLimit]);
 
   if (!primitive || !definition) return null;
   const drillEnabled = definition.drillBehavior === "explicit_path";
@@ -354,7 +364,10 @@ export function GeneratedDashboardWidget({ widget }: { widget: Widget }) {
     }
   };
   const previous = previousDrillQuery(query, widget.drillPath);
-  const width = Math.max(40, Math.min(100, ((widget.layout?.w ?? 12) / 12) * 100));
+  const width = Math.max(
+    40,
+    Math.min(100, ((widget.layout?.w ?? 12) / 12) * 100),
+  );
   const height = Math.max(14, Math.min(56, (widget.layout?.h ?? 4) * 4));
 
   return (
@@ -362,6 +375,8 @@ export function GeneratedDashboardWidget({ widget }: { widget: Widget }) {
       title={widget.title}
       defaultW={width}
       defaultH={height}
+      fill
+      allowResize={mode === "edit"}
       allowPng={definition.export.png}
       onExportCsv={
         definition.export.csv
@@ -382,7 +397,18 @@ export function GeneratedDashboardWidget({ widget }: { widget: Widget }) {
           {widget.whyThisVisualization}
         </p>
         {error ? (
-          <p className="error">Live lake data is unavailable. Retry the query.</p>
+          <div className="generated-widget-error">
+            <p className="error">Live lake data is unavailable.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setError(false);
+                setReloadToken((token) => token + 1);
+              }}
+            >
+              Retry query
+            </button>
+          </div>
         ) : (
           <PrimitiveContent
             primitive={primitive}
@@ -393,7 +419,8 @@ export function GeneratedDashboardWidget({ widget }: { widget: Widget }) {
             onDrillUp={previous ? () => setQuery(previous) : undefined}
             canDrill={
               drillEnabled &&
-              nextDrillQuery(query, rows[0]?.key ?? "", widget.drillPath) !== null
+              nextDrillQuery(query, rows[0]?.key ?? "", widget.drillPath) !==
+                null
             }
           />
         )}

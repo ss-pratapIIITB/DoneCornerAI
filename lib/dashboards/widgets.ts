@@ -22,6 +22,11 @@ export type WidgetType =
 
 export type WidgetLayout = { x?: number; y?: number; w: number; h: number };
 
+export type DashboardLayout = {
+  columns: number;
+  density: "compact" | "standard";
+};
+
 export type Widget = {
   id: string;
   type: WidgetType;
@@ -45,6 +50,7 @@ export type Dashboard = {
   name: string;
   owner: "org" | string;
   forkedFrom: string | null;
+  layout?: DashboardLayout;
   widgets: Widget[];
 };
 

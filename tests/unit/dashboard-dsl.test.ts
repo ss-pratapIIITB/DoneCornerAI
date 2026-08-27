@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createArtifact } from "@/lib/artifacts/store";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import { getDashboard } from "@/lib/dashboards/store";
+import { MAX_DASHBOARD_WIDGETS } from "@/lib/dashboards/validator";
+import { createRun, appendRunEvent } from "@/lib/runs/ledger";
 import { callTool } from "@/mcp/tools";
 
 const queryLakeMock = vi.hoisted(() => vi.fn());
@@ -14,13 +17,44 @@ vi.mock("@/lib/lake/query", async (importOriginal) => ({
 }));
 
 function freshDb() {
-  process.env.DONECORNER_DB = join(
-    mkdtempSync(join(tmpdir(), "dc-dashboard-dsl-")),
-    "t.sqlite",
-  );
+  const dir = mkdtempSync(join(tmpdir(), "dc-dashboard-dsl-"));
+  process.env.DONECORNER_DB = join(dir, "t.sqlite");
+  process.env.DONECORNER_UPLOADS = join(dir, "uploads");
   const db = getDb();
   migrate(db);
   return db;
+}
+
+function seedProvenance(
+  db: ReturnType<typeof getDb>,
+  spec: ReturnType<typeof validSpec>,
+  owner = "cfo",
+) {
+  const run = createRun(db, {
+    sessionId: "session-close",
+    userId: owner,
+    kind: "dashboard_revision",
+  });
+  const event = appendRunEvent(db, run.id, {
+    type: "tool.completed",
+    stage: "query",
+    summary: "query_lake completed",
+    details: { name: "query_lake" },
+  });
+  const artifact = createArtifact(db, {
+    ownerId: owner,
+    filename: "pack.csv",
+    mediaType: "text/csv",
+    bytes: Buffer.from("period,amount\n2026-01,100\n"),
+  });
+  for (const widget of spec.widgets) {
+    widget.provenance = {
+      runId: run.id,
+      eventIds: [event.id],
+      artifactIds: [artifact.id],
+    };
+  }
+  return { run, event, artifact };
 }
 
 function validSpec() {
@@ -126,19 +160,24 @@ describe("agent-designed dashboard DSL", () => {
   });
 
   it("accepts a live-query dashboard and preserves its rendering contract", async () => {
-    const result = (await callTool(freshDb(), "validate_dashboard", {
+    const db = freshDb();
+    const spec = validSpec();
+    const seeded = seedProvenance(db, spec);
+
+    const result = (await callTool(db, "validate_dashboard", {
       dashboard: validSpec(),
     })) as { valid: boolean; findings: unknown[] };
 
     expect(result).toEqual({ valid: true, findings: [] });
 
-    const preview = (await callTool(freshDb(), "preview_dashboard", {
-      dashboard: validSpec(),
+    const preview = (await callTool(db, "preview_dashboard", {
+      dashboard: spec,
     })) as {
       valid: boolean;
       findings: unknown[];
       dashboard: {
         name: string;
+        layout?: { columns: number; density: string };
         widgets: Array<{
           type: string;
           title: string;
@@ -156,6 +195,7 @@ describe("agent-designed dashboard DSL", () => {
     );
     expect(preview.dashboard).toMatchObject({
       name: "Close signals",
+      layout: { columns: 12, density: "standard" },
       widgets: [
         {
           type: "bar",
@@ -171,7 +211,7 @@ describe("agent-designed dashboard DSL", () => {
             "product",
             "account",
           ],
-          provenance: { runId: "run-close-1" },
+          provenance: { runId: seeded.run.id },
         },
       ],
     });
@@ -264,8 +304,11 @@ describe("agent-designed dashboard DSL", () => {
       })),
     );
 
-    const result = (await callTool(freshDb(), "preview_dashboard", {
-      dashboard: validSpec(),
+    const db = freshDb();
+    const spec = validSpec();
+    seedProvenance(db, spec);
+    const result = (await callTool(db, "preview_dashboard", {
+      dashboard: spec,
     })) as {
       valid: boolean;
       findings: Array<{ code: string }>;
@@ -283,14 +326,17 @@ describe("agent-designed dashboard DSL", () => {
 
   it("rejects malformed actual query rows before save and preserves the draft", async () => {
     const db = freshDb();
+    const initialSpec = validSpec();
+    seedProvenance(db, initialSpec);
     const initial = (await callTool(db, "save_personal_dashboard", {
       userId: "cfo",
-      dashboard: validSpec(),
+      dashboard: initialSpec,
     })) as { dashboard: { id: string } };
     queryLakeMock.mockResolvedValue([
       { key: "2026-01", label: "2026-01", value: "not-a-number" },
     ]);
     const changed = validSpec();
+    changed.widgets[0].provenance = initialSpec.widgets[0].provenance;
     changed.name = "Must not persist";
 
     const result = (await callTool(db, "save_personal_dashboard", {
@@ -411,16 +457,18 @@ describe("agent-designed dashboard DSL", () => {
   });
 
   it("normalizes identity and provenance before preview adaptation", async () => {
+    const db = freshDb();
     const dashboard = validSpec();
+    const seeded = seedProvenance(db, dashboard);
     dashboard.id = " personal-cfo-agent-board ";
     dashboard.widgets[0].id = " revenue-trend ";
     dashboard.widgets[0].provenance = {
-      runId: " run-close-1 ",
-      eventIds: [" event-query-1 "],
-      artifactIds: [" artifact-pack-1 "],
+      runId: ` ${seeded.run.id} `,
+      eventIds: [` ${seeded.event.id} `],
+      artifactIds: [` ${seeded.artifact.id} `],
     };
 
-    const result = (await callTool(freshDb(), "preview_dashboard", {
+    const result = (await callTool(db, "preview_dashboard", {
       dashboard,
     })) as {
       dashboard: {
@@ -438,13 +486,14 @@ describe("agent-designed dashboard DSL", () => {
 
     expect(result.dashboard).toMatchObject({
       id: "personal-cfo-agent-board",
+      layout: { columns: 12, density: "standard" },
       widgets: [
         {
           id: "revenue-trend",
           provenance: {
-            runId: "run-close-1",
-            eventIds: ["event-query-1"],
-            artifactIds: ["artifact-pack-1"],
+            runId: seeded.run.id,
+            eventIds: [seeded.event.id],
+            artifactIds: [seeded.artifact.id],
           },
         },
       ],
@@ -453,9 +502,11 @@ describe("agent-designed dashboard DSL", () => {
 
   it("saves a validated personal dashboard for only the requesting user", async () => {
     const db = freshDb();
+    const spec = validSpec();
+    seedProvenance(db, spec);
     const result = (await callTool(db, "save_personal_dashboard", {
       userId: "cfo",
-      dashboard: validSpec(),
+      dashboard: spec,
     })) as {
       valid: boolean;
       findings: unknown[];
@@ -473,10 +524,12 @@ describe("agent-designed dashboard DSL", () => {
     expect(result.dashboard.widgets).toHaveLength(1);
     expect(getDashboard(db, result.dashboard.id)?.owner).toBe("cfo");
 
+    const analystSpec = validSpec();
+    seedProvenance(db, analystSpec, "analyst");
     await expect(
       callTool(db, "save_personal_dashboard", {
         userId: "analyst",
-        dashboard: validSpec(),
+        dashboard: analystSpec,
       }),
     ).rejects.toThrow(/owned by another user/i);
     expect(getDashboard(db, result.dashboard.id)?.owner).toBe("cfo");
@@ -484,11 +537,14 @@ describe("agent-designed dashboard DSL", () => {
 
   it("does not replace an existing draft when validation fails", async () => {
     const db = freshDb();
+    const spec = validSpec();
+    seedProvenance(db, spec);
     const saved = (await callTool(db, "save_personal_dashboard", {
       userId: "cfo",
-      dashboard: validSpec(),
+      dashboard: spec,
     })) as { dashboard: { id: string; name: string } };
     const invalid = validSpec();
+    invalid.widgets[0].provenance = spec.widgets[0].provenance;
     invalid.name = "Should not persist";
     invalid.widgets[0].query.metric = "not_a_metric";
 
@@ -504,5 +560,89 @@ describe("agent-designed dashboard DSL", () => {
       ]),
     );
     expect(getDashboard(db, saved.dashboard.id)?.name).toBe("Close signals");
+  });
+
+  it("caps dashboards at twelve widgets before querying the lake", async () => {
+    const dashboard = validSpec();
+    dashboard.widgets = Array.from(
+      { length: MAX_DASHBOARD_WIDGETS + 1 },
+      (_, index) => ({
+        ...dashboard.widgets[0],
+        id: `widget-${index}`,
+        position: { x: 0, y: index, w: 6, h: 4 },
+      }),
+    );
+
+    const result = (await callTool(freshDb(), "validate_dashboard", {
+      dashboard,
+    })) as { valid: boolean; findings: Array<{ code: string }> };
+
+    expect(result.valid).toBe(false);
+    expect(result.findings).toEqual([
+      expect.objectContaining({ code: "excessive_widgets" }),
+    ]);
+  });
+
+  it("keeps schema validation syntactic and binds provenance only on preview and save", async () => {
+    const db = freshDb();
+    const fake = validSpec();
+    const schema = (await callTool(db, "validate_dashboard", {
+      dashboard: fake,
+    })) as { valid: boolean };
+
+    expect(schema.valid).toBe(true);
+
+    const preview = (await callTool(db, "preview_dashboard", {
+      dashboard: fake,
+    })) as { valid: boolean; findings: Array<{ code: string }> };
+    expect(preview.valid).toBe(false);
+    expect(preview.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "unbound_provenance" }),
+      ]),
+    );
+    expect(queryLakeMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects save provenance that does not belong to the requesting user", async () => {
+    const db = freshDb();
+    const spec = validSpec();
+    seedProvenance(db, spec, "analyst");
+
+    const result = (await callTool(db, "save_personal_dashboard", {
+      userId: "cfo",
+      dashboard: spec,
+    })) as { valid: boolean; findings: Array<{ code: string }> };
+
+    expect(result.valid).toBe(false);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "unbound_provenance" }),
+      ]),
+    );
+    expect(getDashboard(db, spec.id!)).toBeNull();
+  });
+
+  it("lets the same owner overwrite a personal draft without approval", async () => {
+    const db = freshDb();
+    const spec = validSpec();
+    seedProvenance(db, spec);
+    await callTool(db, "save_personal_dashboard", {
+      userId: "cfo",
+      dashboard: spec,
+    });
+    spec.name = "Close signals revised";
+
+    const result = (await callTool(db, "save_personal_dashboard", {
+      userId: "cfo",
+      dashboard: spec,
+    })) as { valid: boolean; dashboard: { name: string; layout?: unknown } };
+
+    expect(result.valid).toBe(true);
+    expect(result.dashboard.name).toBe("Close signals revised");
+    expect(getDashboard(db, spec.id!)?.layout).toEqual({
+      columns: 12,
+      density: "standard",
+    });
   });
 });

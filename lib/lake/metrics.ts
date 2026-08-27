@@ -12,7 +12,8 @@ export const LAKE_METRIC_ACCOUNTS = {
   cash_out: ["cash_out"],
 } as const;
 
-export type LakeMetric = keyof typeof LAKE_METRIC_ACCOUNTS;
+export type LakeMetricAccounts = typeof LAKE_METRIC_ACCOUNTS;
+export type LakeMetric = keyof LakeMetricAccounts;
 
 export const LAKE_METRICS = Object.keys(
   LAKE_METRIC_ACCOUNTS,

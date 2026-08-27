@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { assertCanEdit } from "@/lib/identity/errors";
-import type { Dashboard, Widget } from "@/lib/dashboards/widgets";
+import type { Dashboard, DashboardLayout, Widget } from "@/lib/dashboards/widgets";
 
 export type { Dashboard, Widget, WidgetType } from "@/lib/dashboards/widgets";
 export { setWidgetNote, widgetFromMetric } from "@/lib/dashboards/widgets";
@@ -14,13 +14,28 @@ type DashboardRow = {
   widgets_json: string;
 };
 
+function parseDashboardBody(json: string): {
+  widgets: Widget[];
+  layout?: DashboardLayout;
+} {
+  const parsed = JSON.parse(json) as unknown;
+  if (Array.isArray(parsed)) return { widgets: parsed as Widget[] };
+  if (parsed && typeof parsed === "object" && Array.isArray((parsed as { widgets?: unknown }).widgets)) {
+    const body = parsed as { widgets: Widget[]; layout?: DashboardLayout };
+    return { widgets: body.widgets, layout: body.layout };
+  }
+  return { widgets: [] };
+}
+
 function rowToDashboard(row: DashboardRow): Dashboard {
+  const body = parseDashboardBody(row.widgets_json);
   return {
     id: row.id,
     name: row.name,
     owner: row.owner as Dashboard["owner"],
     forkedFrom: row.forked_from,
-    widgets: JSON.parse(row.widgets_json) as Widget[],
+    layout: body.layout,
+    widgets: body.widgets,
   };
 }
 
@@ -42,7 +57,13 @@ function upsert(db: DatabaseSync, d: Dashboard): Dashboard {
        owner = excluded.owner,
        forked_from = excluded.forked_from,
        widgets_json = excluded.widgets_json`,
-  ).run(d.id, d.name, d.owner, d.forkedFrom, JSON.stringify(d.widgets));
+  ).run(
+    d.id,
+    d.name,
+    d.owner,
+    d.forkedFrom,
+    JSON.stringify({ layout: d.layout, widgets: d.widgets }),
+  );
   return d;
 }
 
@@ -89,6 +110,7 @@ export function forkOrgToPersonal(db: DatabaseSync, userId: string): Dashboard {
     owner: userId,
     forkedFrom: "org-close",
     widgets: structuredClone(org.widgets),
+    layout: org.layout ? structuredClone(org.layout) : undefined,
   });
 }
 

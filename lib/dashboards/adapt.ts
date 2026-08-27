@@ -65,5 +65,6 @@ export function adaptDashboardSpec(
     owner: options.owner,
     forkedFrom: options.forkedFrom ?? null,
     widgets: spec.widgets.map(adaptDashboardWidget),
+    layout: { ...spec.layout },
   };
 }

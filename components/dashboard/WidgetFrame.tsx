@@ -11,9 +11,11 @@ import {
 
 type Props = {
   title: string;
-  children: ReactNode;
+  children?: ReactNode;
   onExportCsv?: () => void;
   allowPng?: boolean;
+  allowResize?: boolean;
+  fill?: boolean;
   extra?: ReactNode;
   defaultW?: number;
   defaultH?: number;
@@ -24,6 +26,8 @@ export function WidgetFrame({
   children,
   onExportCsv,
   allowPng = true,
+  allowResize = true,
+  fill = false,
   extra,
   defaultW = 100,
   defaultH = 22,
@@ -98,6 +102,10 @@ export function WidgetFrame({
   }
 
   function exportPng() {
+    const approved = window.confirm(
+      `Export “${title}” as PNG? The image may contain sensitive finance data.`,
+    );
+    if (!approved) return;
     const svg = box.current?.querySelector("svg");
     if (!svg) return;
     downloadSvgAsPng(svg, `${title.replace(/\s+/g, "-").toLowerCase()}.png`);
@@ -139,25 +147,31 @@ export function WidgetFrame({
       <article
         ref={box}
         className="widget-frame"
-        style={{ width: `${size.w}%`, minHeight: `${size.h}rem` }}
+        style={
+          fill
+            ? { width: "100%", minHeight: `${size.h}rem` }
+            : { width: `${size.w}%`, minHeight: `${size.h}rem` }
+        }
       >
         <header className="widget-frame-head">
           <h3>{title}</h3>
           {actions(false)}
         </header>
         <div className="widget-frame-body">{children}</div>
-        <button
-          type="button"
-          className="resize-handle"
-          aria-label="Resize widget"
-          onPointerDown={startResize}
-          onPointerMove={moveResize}
-          onPointerUp={endResize}
-          onPointerCancel={endResize}
-          onKeyDown={resizeWithKeyboard}
-          aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
-          title="Drag to resize, or use arrow keys"
-        />
+        {allowResize ? (
+          <button
+            type="button"
+            className="resize-handle"
+            aria-label="Resize widget"
+            onPointerDown={startResize}
+            onPointerMove={moveResize}
+            onPointerUp={endResize}
+            onPointerCancel={endResize}
+            onKeyDown={resizeWithKeyboard}
+            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+            title="Drag to resize, or use arrow keys"
+          />
+        ) : null}
       </article>
       {full ? (
         <dialog
@@ -192,8 +206,35 @@ export function downloadCsv(filename: string, rows: { label: string; value: numb
   URL.revokeObjectURL(a.href);
 }
 
+const SVG_PAINT_VARS = [
+  "--gold",
+  "--cyan",
+  "--danger",
+  "--paper",
+  "--panel",
+  "--line",
+  "--ink",
+  "--muted",
+];
+
+export function inlineSvgCssVariables(
+  xml: string,
+  style: Pick<CSSStyleDeclaration, "getPropertyValue">,
+): string {
+  let next = xml;
+  for (const name of SVG_PAINT_VARS) {
+    const value = style.getPropertyValue(name).trim();
+    if (!value) continue;
+    next = next.replaceAll(`var(${name})`, value);
+  }
+  return next;
+}
+
 export function downloadSvgAsPng(svg: SVGElement, filename: string): void {
-  const xml = new XMLSerializer().serializeToString(svg);
+  const xml = inlineSvgCssVariables(
+    new XMLSerializer().serializeToString(svg),
+    getComputedStyle(document.documentElement),
+  );
   const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const img = new Image();

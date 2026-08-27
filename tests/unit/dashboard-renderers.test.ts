@@ -78,6 +78,7 @@ describe("generated dashboard renderers", () => {
         name: "Generated signals",
         owner: "cfo",
         forkedFrom: null,
+        layout: { columns: 12, density: "standard" },
         widgets: primitives.map(widget),
       },
       requestPublish: async () => {},
@@ -126,5 +127,19 @@ describe("generated dashboard renderers", () => {
     expect(markdown.closest(".widget-frame")?.textContent).not.toContain(
       "Export PNG",
     );
+  });
+
+  it("places generated widgets on the persisted grid and blocks view-mode resize", () => {
+    document.body.innerHTML = renderToStaticMarkup(createElement(CloseCanvas));
+
+    const grid = document.querySelector(".dashboard-widget-grid") as HTMLElement;
+    const slot = document.querySelector(
+      '[data-dashboard-slot="widget-bar"]',
+    ) as HTMLElement;
+
+    expect(grid.style.gridTemplateColumns).toContain("repeat(12");
+    expect(slot.style.gridColumn).toBe("1 / span 6");
+    expect(slot.style.gridRow).toBe("1 / span 4");
+    expect(document.querySelector(".resize-handle")).toBeNull();
   });
 });

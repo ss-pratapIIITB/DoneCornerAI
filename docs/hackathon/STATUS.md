@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 3/4 — Build (agentic ingestion + observable workspace)
 
-**Current step:** Slice 4 dashboard DSL is implemented with review-fix hardening; re-review pending before raising the stacked PR. Qodo High/Medium follow-ups on PRs #11/#12 remain queued.
+**Current step:** Slice 4 Qodo fixes on PR #13 (grid, provenance bind, export confirm, view-mode resize). Slice 5 prompt control stays queued on `feat/prompt-control`. Qodo follow-ups on PRs #11/#12 remain queued.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -86,6 +86,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-27 | TrueForge run ledger replaces direct ingestion orchestration | Judges and users must see real sandbox, MCP, subagents, decisions, artifacts, and approvals |
 | 2026-08-27 | Inspect/profile automatically; approve mapping before canonical lake writes | Agent acts while the CFO controls consequential data changes |
 | 2026-08-27 | CFO guidance is editable; assembled prompt and immutable policy are read-only | Useful control without allowing safety/tool rules to be removed |
+| 2026-08-27 | Personal dashboard drafts auto-save; org publish remains the approval gate | Matches the close-pack spec; Qodo overwrite finding is by design |
 
 ## Open questions
 

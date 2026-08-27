@@ -504,6 +504,17 @@ body {
   font-size: 1.05rem;
 }
 
+.dashboard-widget-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-widget-slot,
+.dashboard-widget-slot .widget-frame {
+  min-width: 0;
+  width: 100%;
+}
+
 .resize-handle {
   right: 0.35rem;
   bottom: 0.35rem;

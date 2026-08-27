@@ -46,7 +46,11 @@ export type DashboardFindingCode =
   | "invalid_provenance"
   | "query_execution_failed"
   | "actual_data_shape_mismatch"
-  | "actual_point_limit_exceeded";
+  | "actual_point_limit_exceeded"
+  | "excessive_widgets"
+  | "unbound_provenance";
+
+export const MAX_DASHBOARD_WIDGETS = 12;
 
 export type DashboardValidationFinding = {
   code: DashboardFindingCode;
@@ -192,6 +196,15 @@ export function validateAndNormalizeDashboardSpec(
     );
   }
   const widgets = Array.isArray(input.widgets) ? input.widgets : [];
+  if (widgets.length > MAX_DASHBOARD_WIDGETS) {
+    findings.push(
+      finding(
+        "excessive_widgets",
+        "dashboard.widgets",
+        `Dashboards may contain at most ${MAX_DASHBOARD_WIDGETS} widgets.`,
+      ),
+    );
+  }
   const normalizedWidgets: DashboardWidgetSpec[] = [];
   const positioned: Array<{ index: number; id: string; position: DashboardPosition }> = [];
   const widgetIds = new Set<string>();
@@ -199,7 +212,8 @@ export function validateAndNormalizeDashboardSpec(
     ...DASHBOARD_PRIMITIVES_V1.map((primitive) => primitive.maxPoints),
   );
 
-  widgets.forEach((rawWidget, index) => {
+  if (widgets.length <= MAX_DASHBOARD_WIDGETS) {
+    widgets.forEach((rawWidget, index) => {
     const path = `dashboard.widgets[${index}]`;
     const widget = isRecord(rawWidget) ? rawWidget : {};
     const query = isRecord(widget.query) ? widget.query : {};
@@ -457,6 +471,7 @@ export function validateAndNormalizeDashboardSpec(
       });
     }
   });
+  }
 
   for (let left = 0; left < positioned.length; left += 1) {
     for (let right = left + 1; right < positioned.length; right += 1) {
