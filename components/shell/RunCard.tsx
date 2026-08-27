@@ -15,6 +15,7 @@ const EVENT_LABELS: Partial<Record<RunEvent["type"], string>> = {
   "subagent.completed": "Subagent",
   "subagent.failed": "Subagent",
   "approval.requested": "Approval",
+  "approval.resolved": "Approval",
   "mcp.connected": "MCP",
   "mcp.auth_required": "MCP",
   "artifact.inspected": "File",
@@ -27,9 +28,23 @@ const EVENT_LABELS: Partial<Record<RunEvent["type"], string>> = {
 };
 
 function eventDetails(event: RunEvent): Record<string, unknown> {
-  const details = { ...event.details };
-  delete details.content;
-  return details;
+  const safeKeys = new Set([
+    "name",
+    "toolCallId",
+    "threadId",
+    "artifactId",
+    "proposalId",
+    "status",
+    "confidence",
+    "rowsWritten",
+    "rowsRejected",
+    "rowCount",
+    "model",
+    "allow",
+  ]);
+  return Object.fromEntries(
+    Object.entries(event.details).filter(([key]) => safeKeys.has(key)),
+  );
 }
 
 export function RunCard({

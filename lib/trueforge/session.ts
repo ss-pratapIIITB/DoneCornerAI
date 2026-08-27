@@ -273,6 +273,18 @@ export async function runApprovalTurn(
     kind: "question",
     userId,
   });
+  for (const approval of approvals) {
+    appendRunEvent(db, activeRunId, {
+      type: "approval.resolved",
+      stage: "approval",
+      summary: approval.allow ? "Tool action approved" : "Tool action denied",
+      details: {
+        threadId: approval.threadId,
+        toolCallId: approval.toolCallId,
+        allow: approval.allow,
+      },
+    });
+  }
   updateRun(db, activeRunId, {
     status: "running",
     currentStage: "approval",

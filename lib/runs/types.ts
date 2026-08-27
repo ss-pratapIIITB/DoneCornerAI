@@ -29,6 +29,7 @@ export type RunEventType =
   | "subagent.completed"
   | "subagent.failed"
   | "approval.requested"
+  | "approval.resolved"
   | "mcp.connected"
   | "mcp.auth_required"
   | "artifact.inspected"

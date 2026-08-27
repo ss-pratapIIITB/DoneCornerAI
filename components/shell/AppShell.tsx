@@ -83,6 +83,33 @@ function questionFromEvents(events: RunEvent[]): string {
   );
 }
 
+function unresolvedApprovals(events: RunEvent[]) {
+  const pending = new Map<
+    string,
+    { threadId: string; toolCallId: string; name?: string }
+  >();
+  for (const event of events) {
+    const toolCallId = String(event.details.toolCallId ?? "");
+    if (!toolCallId) continue;
+    if (event.type === "approval.requested") {
+      pending.set(toolCallId, {
+        threadId: String(event.details.threadId ?? "main"),
+        toolCallId,
+        name: String(event.details.name ?? "Sensitive tool action"),
+      });
+    } else if (event.type === "approval.resolved") {
+      pending.delete(toolCallId);
+    }
+  }
+  return [...pending.values()];
+}
+
+function uiRunStatus(status: AgentRun["status"]): AgentStatus {
+  if (status === "queued") return "running";
+  if (status === "cancelled") return "error";
+  return status;
+}
+
 type Props = {
   children: React.ReactNode;
 };
@@ -131,6 +158,36 @@ export function AppShell({ children }: Props) {
     setAgentDetail(detail);
   }, []);
 
+  const applyRunSnapshot = useCallback(
+    (snapshot: { run: AgentRun; events: RunEvent[] }) => {
+      const answer = answerFromEvents(snapshot.events);
+      setTurns((current) =>
+        current.map((turn) =>
+          turn.id === snapshot.run.id
+            ? {
+                ...turn,
+                a: answer,
+                run: snapshot.run,
+                events: snapshot.events,
+              }
+            : turn,
+        ),
+      );
+      setPendingTf(
+        snapshot.run.status === "waiting_approval"
+          ? unresolvedApprovals(snapshot.events)
+          : [],
+      );
+      const status = uiRunStatus(snapshot.run.status);
+      setAgent(
+        status,
+        answer ||
+          (status === "running" ? "Agent work is still running…" : "Ready."),
+      );
+    },
+    [setAgent],
+  );
+
   const refreshBoard = useCallback(async () => {
     const id =
       board?.id ?? localStorage.getItem("donecorner.board") ?? "org-close";
@@ -164,21 +221,9 @@ export function AppShell({ children }: Props) {
     const latest = runs.at(-1);
     if (!latest) return;
     setActiveRunId(latest.id);
-    const pending = latest.events
-      .filter((event) => event.type === "approval.requested")
-      .map((event) => ({
-        threadId: String(event.details.threadId ?? "main"),
-        toolCallId: String(event.details.toolCallId ?? ""),
-        name: String(event.details.name ?? "Sensitive tool action"),
-      }))
-      .filter((approval) => approval.toolCallId);
+    const pending = unresolvedApprovals(latest.events);
     setPendingTf(latest.status === "waiting_approval" ? pending : []);
-    const status: AgentStatus =
-      latest.status === "cancelled"
-        ? "error"
-        : latest.status === "queued"
-          ? "running"
-          : latest.status;
+    const status = uiRunStatus(latest.status);
     setAgentStatus(status);
     setAgentDetail(
       answerFromEvents(latest.events) ||
@@ -217,6 +262,31 @@ export function AppShell({ children }: Props) {
     // First paint only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!activeRunId || agentStatus !== "running") return;
+    let cancelled = false;
+    const poll = async () => {
+      while (!cancelled) {
+        const response = await fetch(`/api/runs/${activeRunId}/events`);
+        if (!response.ok) return;
+        const snapshot = (await response.json()) as {
+          run: AgentRun;
+          events: RunEvent[];
+        };
+        if (cancelled) return;
+        applyRunSnapshot(snapshot);
+        if (snapshot.run.status !== "running" && snapshot.run.status !== "queued") {
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRunId, agentStatus, applyRunSnapshot]);
 
   const enterEdit = useCallback(async () => {
     const res = await fetch("/api/dashboards", { method: "POST" });
@@ -332,53 +402,17 @@ export function AppShell({ children }: Props) {
           .map((artifact) => `- artifactId=${artifact.id} name=${artifact.name}`)
           .join("\n")}`
       : "";
-    let polling = true;
-    const syncRun = async () => {
-      const response = await fetch(`/api/runs/${run.id}/events`);
-      if (!response.ok) return;
-      const snapshot = (await response.json()) as {
-        run: AgentRun;
-        events: RunEvent[];
-      };
-      const answer = answerFromEvents(snapshot.events);
-      setTurns((current) =>
-        current.map((turn) =>
-          turn.id === run.id
-            ? {
-                ...turn,
-                a: answer,
-                run: snapshot.run,
-                events: snapshot.events,
-              }
-            : turn,
-        ),
-      );
-      if (answer) setAgentDetail(answer);
-    };
-    const poll = (async () => {
-      while (polling) {
-        await syncRun();
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-      }
-    })();
-    let turn: Response;
-    try {
-      turn = await fetch("/api/session/turn", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          sessionId: session.id,
-          runId: run.id,
-          kind,
-          displayMessage,
-          message: `${prompt}${artifactContext}`,
-        }),
-      });
-    } finally {
-      polling = false;
-      await poll;
-    }
-    await syncRun();
+    const turn = await fetch("/api/session/turn", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionId: session.id,
+        runId: run.id,
+        kind,
+        displayMessage,
+        message: `${prompt}${artifactContext}`,
+      }),
+    });
     if (!turn.ok) {
       setAgent("error", "The query turn failed.");
       throw new Error("The agent turn failed.");

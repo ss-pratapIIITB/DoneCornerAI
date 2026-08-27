@@ -122,10 +122,14 @@ export function AgentRail({
       ) : null}
       {onSubmit ? (
         <AgentComposer
-          disabled={disabled || status === "running"}
+          disabled={
+            disabled || status === "running" || status === "waiting_approval"
+          }
           reason={
             status === "running"
               ? "The agent is working. You can inspect live activity above."
+              : status === "waiting_approval"
+                ? "Resolve the pending action before starting another run."
               : disabledReason
           }
           onSubmit={onSubmit}
