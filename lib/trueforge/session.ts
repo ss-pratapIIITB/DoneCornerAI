@@ -344,7 +344,32 @@ function stateForEvent(event: RunEvent): {
   return { currentStage: event.stage };
 }
 
-async function collectTurn(
+function turnStatusFromRun(
+  status: RunStatus | undefined,
+): TurnSummary["status"] {
+  if (status === "waiting_approval") return "waiting_approval";
+  if (status === "done") return "done";
+  if (status === "running" || status === "queued") return "running";
+  return "error";
+}
+
+function summaryFromPersistedRun(
+  db: ReturnType<typeof getDb>,
+  runId: string,
+): TurnSummary {
+  const run = getRun(db, runId);
+  const events = listRunEvents(db, runId);
+  return {
+    status: turnStatusFromRun(run?.status),
+    output: events.at(-1)?.summary ?? "",
+    pendingApprovals: [],
+    charts: [],
+    runId,
+    events,
+  };
+}
+
+export async function collectTurn(
   stream: AsyncIterable<unknown>,
   runId: string,
 ): Promise<TurnSummary> {
@@ -352,6 +377,7 @@ async function collectTurn(
   const db = getDb();
   migrate(db);
   const context = createNormalizationContext();
+  let interrupted = false;
   try {
     for await (const item of stream) {
       const current = getRun(db, runId);
@@ -361,6 +387,7 @@ async function collectTurn(
           current.status === "error" ||
           current.status === "cancelled")
       ) {
+        interrupted = true;
         break;
       }
       rawEvents.push(item);
@@ -377,14 +404,7 @@ async function collectTurn(
         current.status === "error" ||
         current.status === "cancelled")
     ) {
-      return {
-        status: "error",
-        output: err instanceof Error ? err.message : "Turn failed",
-        pendingApprovals: [],
-        charts: [],
-        runId,
-        events: listRunEvents(db, runId),
-      };
+      return summaryFromPersistedRun(db, runId);
     }
     const message = err instanceof Error ? err.message : "Turn failed";
     appendRunEvent(db, runId, {
@@ -403,6 +423,7 @@ async function collectTurn(
       events: listRunEvents(db, runId),
     };
   }
+  if (interrupted) return summaryFromPersistedRun(db, runId);
   return {
     ...summarizeTurnEvents(rawEvents),
     runId,
