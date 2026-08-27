@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LakeChart } from "@/components/dashboard/LakeChart";
+import { GeneratedDashboardWidget } from "@/components/dashboard/GeneratedDashboardWidget";
 import { PinChartMenu } from "@/components/dashboard/PinChartMenu";
 import { PnlTable } from "@/components/dashboard/PnlTable";
 import { WidgetFrame, downloadCsv } from "@/components/dashboard/WidgetFrame";
@@ -207,6 +208,7 @@ export function CloseCanvas() {
         <div className="signal-primary-chart">
           <WidgetFrame
             title={`${query.metric} · ${query.grain}`}
+            allowResize={mode === "edit"}
             onExportCsv={() =>
               downloadCsv(`${query.metric}-${query.grain}.csv`, rows)
             }
@@ -267,7 +269,7 @@ export function CloseCanvas() {
       </div>
 
       <div className="signal-pnl">
-        <WidgetFrame title="P&L · actuals" defaultH={26}>
+        <WidgetFrame title="P&L · actuals" defaultH={26} allowResize={mode === "edit"}>
           {pnl ? (
             <PnlTable
               periods={pnl.periods}
@@ -308,17 +310,49 @@ export function CloseCanvas() {
             />
           ))}
 
-          {board?.widgets.map((w) =>
-            w.lake ? (
-              <PinnedLakeWidget key={w.id} widget={w} />
-            ) : (
-              <article key={w.id} className="widget-card">
-                <strong>{w.title}</strong>
-                <span className="empty"> · {w.type}</span>
-                <WidgetNote widget={w} />
-              </article>
-            ),
-          )}
+          {board?.widgets.length ? (
+            <div
+              className="dashboard-widget-grid"
+              style={{
+                gridTemplateColumns: `repeat(${board.layout?.columns ?? 12}, minmax(0, 1fr))`,
+              }}
+            >
+              {board.widgets.map((w) => {
+                const columns = board.layout?.columns ?? 12;
+                const x = w.layout?.x ?? 0;
+                const y = w.layout?.y ?? 0;
+                const span = w.layout?.w ?? columns;
+                const height = w.layout?.h ?? 4;
+                return (
+                  <div
+                    key={w.id}
+                    className="dashboard-widget-slot"
+                    data-dashboard-slot={w.id}
+                    style={{
+                      gridColumn: `${x + 1} / span ${span}`,
+                      gridRow: `${y + 1} / span ${height}`,
+                    }}
+                  >
+                    {w.lake && w.primitive ? (
+                      <GeneratedDashboardWidget
+                        key={`${w.id}:${w.primitive}:${JSON.stringify(w.lake ?? w.query)}`}
+                        widget={w}
+                        mode={mode}
+                      />
+                    ) : w.lake ? (
+                      <PinnedLakeWidget widget={w} allowResize={mode === "edit"} />
+                    ) : (
+                      <article className="widget-card">
+                        <strong>{w.title}</strong>
+                        <span className="empty"> · {w.type}</span>
+                        <WidgetNote widget={w} />
+                      </article>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </section>
@@ -334,7 +368,13 @@ function lakeFromWidget(widget: Widget): LakeQuery {
   };
 }
 
-function PinnedLakeWidget({ widget }: { widget: Widget }) {
+function PinnedLakeWidget({
+  widget,
+  allowResize,
+}: {
+  widget: Widget;
+  allowResize: boolean;
+}) {
   const [query, setQuery] = useState<LakeQuery>(lakeFromWidget(widget));
   const [rows, setRows] = useState<LakeRow[]>([]);
   useEffect(() => {
@@ -355,6 +395,8 @@ function PinnedLakeWidget({ widget }: { widget: Widget }) {
   return (
     <WidgetFrame
       title={widget.title}
+      fill
+      allowResize={allowResize}
       onExportCsv={() => downloadCsv(`${widget.title}.csv`, rows)}
     >
       <LakeChart query={query} rows={rows} onQueryChange={setQuery} />
@@ -393,6 +435,7 @@ function AgentChartBlock({
     <WidgetFrame
       title={spec.title}
       extra={<PinChartMenu onPin={onPin} disabled={!canPin} />}
+      allowResize={canPin}
       onExportCsv={() => downloadCsv(`${spec.title}.csv`, rows)}
     >
       <LakeChart query={query} rows={rows} onQueryChange={setQuery} />

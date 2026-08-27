@@ -1,14 +1,22 @@
+import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { inspectArtifact } from "@/lib/artifacts/inspect";
 import { describeSchema } from "@/lib/cube/schema";
 import { queryCube, type CubeQuery } from "@/lib/cube/query";
+import { adaptDashboardSpec } from "@/lib/dashboards/adapt";
+import { listDashboardPrimitives } from "@/lib/dashboards/primitives";
+import { validateDashboardProvenance } from "@/lib/dashboards/provenance";
+import { validateDashboardRuntime } from "@/lib/dashboards/runtime";
 import {
   ensureOrgClose,
   getDashboard,
   savePersonalDashboard,
-  type Dashboard,
 } from "@/lib/dashboards/store";
 import { requestPublishOrg } from "@/lib/dashboards/publish";
+import {
+  validateAndNormalizeDashboardSpec,
+  validateDashboardSpec,
+} from "@/lib/dashboards/validator";
 import { loadSamplePack } from "@/lib/pack/load-sample";
 import { ingestCloseUpload } from "@/lib/pack/ingest";
 import { seedLake } from "@/lib/lake/seed";
@@ -32,6 +40,9 @@ export const TOOL_NAMES = [
   "query_lake",
   "query_sql",
   "present_chart",
+  "list_dashboard_primitives",
+  "validate_dashboard",
+  "preview_dashboard",
   "get_dashboard",
   "save_personal_dashboard",
   "request_publish_org",
@@ -155,6 +166,35 @@ export async function callTool(
         chart: { title: String(args.title ?? query.metric), query },
       };
     }
+    case "list_dashboard_primitives":
+      return listDashboardPrimitives(args.version ?? 1);
+    case "validate_dashboard":
+      return validateDashboardSpec(args.dashboard);
+    case "preview_dashboard": {
+      const validation = validateAndNormalizeDashboardSpec(args.dashboard);
+      if (!validation.valid || !validation.spec) {
+        return { valid: false, findings: validation.findings };
+      }
+      const provenance = validateDashboardProvenance(db, validation.spec);
+      if (provenance.length) {
+        return { valid: false, findings: provenance };
+      }
+      const runtime = await validateDashboardRuntime(
+        validation.spec,
+        queryLake,
+      );
+      if (!runtime.valid) {
+        return { valid: false, findings: runtime.findings };
+      }
+      return {
+        valid: true,
+        findings: [],
+        dashboard: adaptDashboardSpec(validation.spec, {
+          owner: "preview",
+        }),
+        rowsByWidget: runtime.rowsByWidget,
+      };
+    }
     case "get_dashboard": {
       const id = String(args.id ?? "org-close");
       const dashboard = getDashboard(db, id);
@@ -164,8 +204,42 @@ export async function callTool(
     case "save_personal_dashboard": {
       const userId = String(args.userId ?? "").trim();
       if (!userId) throw new Error("userId is required");
-      const dashboard = args.dashboard as Dashboard;
-      return savePersonalDashboard(db, userId, dashboard);
+      const validation = validateAndNormalizeDashboardSpec(args.dashboard);
+      if (!validation.valid || !validation.spec) {
+        return { valid: false, findings: validation.findings };
+      }
+      const dashboardId =
+        validation.spec.id ??
+        `personal-${userId}-${randomUUID().slice(0, 8)}`;
+      const existing = getDashboard(db, dashboardId);
+      if (existing && existing.owner !== userId) {
+        throw new Error("Dashboard is owned by another user");
+      }
+      const provenance = validateDashboardProvenance(db, validation.spec, {
+        ownerId: userId,
+      });
+      if (provenance.length) {
+        return { valid: false, findings: provenance };
+      }
+      const runtime = await validateDashboardRuntime(
+        validation.spec,
+        queryLake,
+      );
+      if (!runtime.valid) {
+        return { valid: false, findings: runtime.findings };
+      }
+      // Personal drafts auto-save for the owner. Org overwrite still requires
+      // request_publish_org + human approval.
+      const dashboard = adaptDashboardSpec(validation.spec, {
+        id: dashboardId,
+        owner: userId,
+        forkedFrom: existing?.forkedFrom ?? null,
+      });
+      return {
+        valid: true,
+        findings: [],
+        dashboard: savePersonalDashboard(db, userId, dashboard),
+      };
     }
     case "request_publish_org": {
       const userId = String(args.userId ?? "").trim();

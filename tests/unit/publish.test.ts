@@ -44,11 +44,21 @@ describe("publish", () => {
     const db = freshDb();
     ensureOrgClose(db);
     const personal = forkOrgToPersonal(db, "fpna");
-    savePersonalDashboard(db, "fpna", { ...personal, widgets: [widget] });
+    savePersonalDashboard(db, "fpna", {
+      ...personal,
+      layout: { columns: 12, density: "standard" },
+      widgets: [widget],
+    });
     const req = requestPublishOrg(db, "fpna", personal.id);
     resolvePublish(db, req.id, "approved", "fpna");
     expect(getDashboard(db, "org-close")?.widgets).toEqual([widget]);
+    expect(getDashboard(db, "org-close")?.layout).toEqual({
+      columns: 12,
+      density: "standard",
+    });
     expect(getDashboard(db, personal.id)?.widgets).toEqual([widget]);
+    const forked = forkOrgToPersonal(db, "cfo");
+    expect(forked.layout).toEqual({ columns: 12, density: "standard" });
   });
 
   it("forbids viewer publish", () => {

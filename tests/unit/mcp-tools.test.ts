@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import { createArtifact } from "@/lib/artifacts/store";
+import { savePersonalDashboard } from "@/lib/dashboards/store";
 import { callTool } from "@/mcp/tools";
 
 function freshDb() {
@@ -44,14 +45,14 @@ describe("MCP tools", () => {
     expect(result.rows.length).toBeGreaterThan(0);
   });
 
-  it("save_personal_dashboard writes widgets without touching org", async () => {
+  it("save_personal_dashboard rejects the legacy unversioned dashboard shape", async () => {
     const db = freshDb();
     const org = (await callTool(db, "get_dashboard", { id: "org-close" })) as {
       id: string;
       widgets: unknown[];
     };
     expect(org.id).toBe("org-close");
-    const personal = (await callTool(db, "save_personal_dashboard", {
+    const result = (await callTool(db, "save_personal_dashboard", {
       userId: "cfo",
       dashboard: {
         id: "personal-cfo-test",
@@ -68,8 +69,13 @@ describe("MCP tools", () => {
           },
         ],
       },
-    })) as { widgets: unknown[] };
-    expect(personal.widgets).toHaveLength(1);
+    })) as { valid: boolean; findings: Array<{ code: string }> };
+    expect(result.valid).toBe(false);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "unsupported_dsl_version" }),
+      ]),
+    );
     const orgAfter = (await callTool(db, "get_dashboard", { id: "org-close" })) as {
       widgets: unknown[];
     };
@@ -78,24 +84,25 @@ describe("MCP tools", () => {
 
   it("request_publish_org queues pending and does not overwrite org Close", async () => {
     const db = freshDb();
-    const personal = (await callTool(db, "save_personal_dashboard", {
-      userId: "cfo",
-      dashboard: {
-        id: "personal-cfo-pub",
-        name: "CFO draft",
-        owner: "cfo",
-        forkedFrom: "org-close",
-        widgets: [
-          {
-            id: "w-pub",
-            type: "kpi",
-            title: "revenue",
-            query: { metric: "revenue", grain: "period", filters: { scenario: "actual" } },
-            note: "",
+    const personal = savePersonalDashboard(db, "cfo", {
+      id: "personal-cfo-pub",
+      name: "CFO draft",
+      owner: "cfo",
+      forkedFrom: "org-close",
+      widgets: [
+        {
+          id: "w-pub",
+          type: "kpi",
+          title: "revenue",
+          query: {
+            metric: "revenue",
+            grain: "period",
+            filters: { scenario: "actual" },
           },
-        ],
-      },
-    })) as { id: string };
+          note: "",
+        },
+      ],
+    });
     const result = await callTool(db, "request_publish_org", {
       userId: "cfo",
       personalId: personal.id,

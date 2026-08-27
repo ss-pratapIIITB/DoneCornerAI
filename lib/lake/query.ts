@@ -2,22 +2,15 @@ import { getPool } from "@/lib/pg/pool";
 import { migrateWarehouse } from "@/lib/pg/migrate";
 import type { LakeGrain, LakeQuery, LakeRow } from "@/lib/lake/types";
 import { ENTITY_LEVELS, parseLakeGrain } from "@/lib/lake/types";
+import {
+  accountsForLakeMetric,
+  isLakeMetric,
+} from "@/lib/lake/metrics";
 export { drillLake, drillLakeUp, nextLakeGrain, prevLakeGrain } from "@/lib/lake/drill";
 
-const METRIC_ACCOUNTS: Record<string, string[]> = {
-  revenue: ["revenue"],
-  cogs: ["cogs"],
-  opex: ["sm", "rd", "ga"],
-  sm: ["sm"],
-  capex_tech: ["capex_tech"],
-  ap: ["ap"],
-  net_income: ["net_income"],
-  cash_in: ["cash_in"],
-  cash_out: ["cash_out"],
-};
-
 function accountsFor(metric: string): string[] {
-  return METRIC_ACCOUNTS[metric] ?? [metric];
+  if (!isLakeMetric(metric)) throw new Error(`Unsupported lake metric ${metric}`);
+  return accountsForLakeMetric(metric);
 }
 
 function grainColumn(grain: LakeGrain): string {

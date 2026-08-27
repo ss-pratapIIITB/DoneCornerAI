@@ -6,9 +6,9 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 ## Now
 
-**Phase:** 3/4 — Build (agentic ingestion + observable workspace)
+**Phase:** 3/4 — Build (prompt control)
 
-**Current step:** Observable ingestion and the unified agent workspace are implemented. Qodo High findings and the PR #11/#12 Medium follow-up batches are fixed and verified; re-review requested on both PRs before dashboard DSL.
+**Current step:** Stacked PRs #11–#13 merged. Next is editable CFO guidance and a read-only assembled prompt.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -45,7 +45,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 - [x] Observable TrueForge run ledger + replay
 - [x] Agent-owned quarantine, inspection, mapping approval, and canonical load
 - [x] Unified Markdown agent workspace + attachments
-- [ ] Validated agent-designed dashboard DSL
+- [x] Validated agent-designed dashboard DSL
 - [ ] Editable CFO guidance + read-only assembled prompt
 
 ## Phase 4 — Hackathon evidence
@@ -86,6 +86,8 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-27 | TrueForge run ledger replaces direct ingestion orchestration | Judges and users must see real sandbox, MCP, subagents, decisions, artifacts, and approvals |
 | 2026-08-27 | Inspect/profile automatically; approve mapping before canonical lake writes | Agent acts while the CFO controls consequential data changes |
 | 2026-08-27 | CFO guidance is editable; assembled prompt and immutable policy are read-only | Useful control without allowing safety/tool rules to be removed |
+| 2026-08-27 | Personal dashboard drafts auto-save; org publish remains the approval gate | Matches the close-pack spec; Qodo overwrite finding is by design |
+| 2026-08-27 | Sample lake reset and quarantined discard require explicit confirm | Destructive, but not org-publish; TrueForge approval stays on mapping and org overwrite |
 
 ## Open questions
 

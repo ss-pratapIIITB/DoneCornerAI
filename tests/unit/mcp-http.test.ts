@@ -47,6 +47,10 @@ describe("MCP JSON-RPC", () => {
     expect(names).toContain("query_sql");
     expect(names).toContain("present_chart");
     expect(names).toContain("load_lake");
+    expect(names).toContain("list_dashboard_primitives");
+    expect(names).toContain("validate_dashboard");
+    expect(names).toContain("preview_dashboard");
+    expect(names).toContain("save_personal_dashboard");
     expect(names).toContain("request_publish_org");
   });
 

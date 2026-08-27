@@ -150,6 +150,35 @@ export const MCP_TOOLS: McpToolDef[] = [
     },
   },
   {
+    name: "list_dashboard_primitives",
+    description:
+      "List the governed dashboard primitive catalog, including data, layout, export, accessibility, drill, and renderer contracts.",
+    inputSchema: {
+      type: "object",
+      properties: { version: { type: "number", enum: [1] } },
+    },
+  },
+  {
+    name: "validate_dashboard",
+    description:
+      "Validate a versioned dashboard DSL specification and return structured findings. Does not execute queries or save.",
+    inputSchema: {
+      type: "object",
+      properties: { dashboard: { type: "object" } },
+      required: ["dashboard"],
+    },
+  },
+  {
+    name: "preview_dashboard",
+    description:
+      "Validate and adapt a dashboard DSL specification for the existing live widget renderer without saving.",
+    inputSchema: {
+      type: "object",
+      properties: { dashboard: { type: "object" } },
+      required: ["dashboard"],
+    },
+  },
+  {
     name: "get_dashboard",
     description: "Fetch a dashboard by id (default org-close).",
     inputSchema: {
@@ -159,12 +188,23 @@ export const MCP_TOOLS: McpToolDef[] = [
   },
   {
     name: "save_personal_dashboard",
-    description: "Write a personal dashboard. Does not overwrite org Close.",
+    description:
+      "Validate, adapt, and save a versioned dashboard specification as the requesting user's personal draft. Does not overwrite org Close.",
     inputSchema: {
       type: "object",
       properties: {
         userId: { type: "string" },
-        dashboard: { type: "object" },
+        dashboard: {
+          type: "object",
+          properties: {
+            version: { type: "number", enum: [1] },
+            name: { type: "string" },
+            purpose: { type: "string" },
+            layout: { type: "object" },
+            widgets: { type: "array" },
+          },
+          required: ["version", "name", "purpose", "layout", "widgets"],
+        },
       },
       required: ["userId", "dashboard"],
     },

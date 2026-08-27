@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { assertCanPublish } from "@/lib/identity/errors";
-import { getDashboard } from "@/lib/dashboards/store";
+import { getDashboard, replaceOrgClose } from "@/lib/dashboards/store";
 
 export type PublishState = "pending" | "approved" | "denied";
 
@@ -45,9 +45,7 @@ export function resolvePublish(
   if (decision === "approved") {
     const personal = getDashboard(db, row.personal_id);
     if (!personal) throw new Error("Personal dashboard not found");
-    db.prepare(
-      `UPDATE dashboards SET widgets_json = ?, name = ? WHERE id = 'org-close'`,
-    ).run(JSON.stringify(personal.widgets), "Northstar Close");
+    replaceOrgClose(db, personal);
   }
 
   db.prepare("UPDATE publishes SET state = ? WHERE id = ?").run(decision, id);

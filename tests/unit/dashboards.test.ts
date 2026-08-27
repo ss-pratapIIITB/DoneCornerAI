@@ -71,6 +71,29 @@ describe("dashboards", () => {
       expect(err).toMatchObject({ code: "FORBIDDEN" });
     }
   });
+
+  it("does not let another editor claim an existing personal dashboard", () => {
+    const db = freshDb();
+    ensureOrgClose(db);
+    savePersonalDashboard(db, "cfo", {
+      id: "personal-cfo-owned",
+      name: "CFO owned",
+      owner: "cfo",
+      forkedFrom: null,
+      widgets: [sampleWidget],
+    });
+
+    expect(() =>
+      savePersonalDashboard(db, "analyst", {
+        id: "personal-cfo-owned",
+        name: "Claimed",
+        owner: "analyst",
+        forkedFrom: null,
+        widgets: [],
+      }),
+    ).toThrow(/owned by another user/i);
+    expect(getDashboard(db, "personal-cfo-owned")?.owner).toBe("cfo");
+  });
 });
 
 describe("describeSchema", () => {
