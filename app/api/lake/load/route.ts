@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { jsonError } from "@/lib/api/http";
 import { seedLake } from "@/lib/lake/seed";
 
@@ -13,6 +12,6 @@ export async function POST(): Promise<Response> {
   }
 }
 
-export async function GET(_req: NextRequest): Promise<Response> {
+export async function GET(): Promise<Response> {
   return POST();
 }

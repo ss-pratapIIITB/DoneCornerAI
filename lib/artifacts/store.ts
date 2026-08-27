@@ -87,7 +87,7 @@ export function createArtifact(
   }
   const id = `art_${randomUUID()}`;
   const storageKey = `${id}-${filename}`;
-  const root = resolve(artifactRoot());
+  const root = resolve(/*turbopackIgnore: true*/ artifactRoot());
   mkdirSync(root, { recursive: true });
   writeFileSync(join(root, storageKey), input.bytes, { mode: 0o600 });
   const createdAt = new Date().toISOString();
@@ -136,10 +136,10 @@ export function readArtifact(
   if (!row || (ownerId && row.owner_id !== ownerId)) {
     throw new Error("Artifact not found");
   }
-  const root = resolve(artifactRoot());
+  const root = resolve(/*turbopackIgnore: true*/ artifactRoot());
   const path = resolve(root, row.storage_key);
   if (!path.startsWith(`${root}/`)) throw new Error("Invalid artifact storage key");
-  return readFileSync(path);
+  return readFileSync(/*turbopackIgnore: true*/ path);
 }
 
 export function updateArtifactStatus(
