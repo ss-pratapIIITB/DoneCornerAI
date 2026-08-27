@@ -1,16 +1,19 @@
 import { TrueForgeError } from "@truefoundry/trueforge-sdk";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
 import { CLOSE_PACK_AGENT, closePackSpec } from "@/lib/trueforge/agent";
+import { ensureHarness } from "@/lib/trueforge/harness";
 
 const MODEL = process.env.TRUEFORGE_MODEL ?? "anthropic/claude-sonnet-4-6";
 
 export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reason: string }> {
   try {
-    const res = await fetch(trueforgeBaseUrl(), {
+    const res = await fetch(`${trueforgeBaseUrl().replace(/\/$/, "")}/api/v1/sessions`, {
       signal: AbortSignal.timeout(1500),
     });
-    if (res.status >= 500) {
-      return { ok: false, reason: "TrueForge returned an error." };
+    // Auth-gated API still means the harness is up.
+    if (res.status === 401 || res.status === 403) return { ok: true };
+    if (!res.ok) {
+      return { ok: false, reason: "TrueForge API is not reachable." };
     }
     return { ok: true };
   } catch {
@@ -35,6 +38,7 @@ export async function resumeOrCreateSession(sessionId?: string | null): Promise<
   }
 
   try {
+    await ensureHarness();
     const named = await client.sessions.create({
       agent: { name: CLOSE_PACK_AGENT },
     });

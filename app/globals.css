@@ -21,6 +21,17 @@ body {
   margin: 0;
   background: var(--ink);
   color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  scrollbar-color: var(--line) var(--ink);
+}
+
+button:hover:not(:disabled),
+.rail a:hover,
+.drill-keys button:hover {
+  filter: brightness(1.08);
 }
 
 ::selection {
@@ -161,10 +172,18 @@ body {
   letter-spacing: -0.03em;
 }
 
+.query-bar button.ask-submit:not(:disabled) {
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--gold);
+}
+
 .close-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -183,6 +202,61 @@ body {
   padding: 1.25rem 1rem;
   border-left: 1px solid var(--line);
   background: var(--panel);
+}
+
+.agent-rail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.agent-rail h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.agent-status {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.agent-status[data-agent-status="running"] {
+  color: var(--gold);
+  border-color: var(--gold);
+  animation: agent-pulse 1.4s ease-in-out infinite;
+}
+
+.agent-status[data-agent-status="waiting_approval"] {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.agent-status[data-agent-status="error"] {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.agent-status[data-agent-status="done"] {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+@keyframes agent-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .chart-block {
@@ -361,5 +435,17 @@ body {
   .rail,
   .agent-rail {
     border: 0;
+  }
+  .rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .brand {
+    margin: 0 0.75rem 0 0;
+  }
+  .topbar {
+    flex-wrap: wrap;
   }
 }

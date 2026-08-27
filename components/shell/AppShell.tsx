@@ -59,6 +59,9 @@ export function AppShell({ children }: Props) {
     "Connect TrueForge to ask follow-ups.",
   );
   const [tfSession, setTfSession] = useState<string | null>(null);
+  const [pendingTf, setPendingTf] = useState<
+    { threadId: string; toolCallId: string; name?: string }[]
+  >([]);
 
   const setAgent = useCallback((status: AgentStatus, detail: string) => {
     setAgentStatus(status);
@@ -145,24 +148,6 @@ export function AppShell({ children }: Props) {
     );
   }, [board, enterEdit, setAgent]);
 
-  async function resolveRail(decision: "approved" | "denied") {
-    if (publishId) {
-      await fetch("/api/dashboards/publish", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "resolve", id: publishId, decision }),
-      });
-    }
-    setPublishId(null);
-    setAgent(
-      decision === "approved" ? "done" : "idle",
-      decision === "approved"
-        ? "Org Close updated."
-        : "Publish denied. Personal draft kept.",
-    );
-    await refreshBoard();
-  }
-
   async function ask(q: string) {
     setAgent("running", "Asking Close Pack…");
     const created = await fetch("/api/session", {
@@ -192,11 +177,59 @@ export function AppShell({ children }: Props) {
     const result = (await turn.json()) as {
       status: AgentStatus;
       output: string;
+      pendingApprovals?: {
+        threadId: string;
+        toolCallId: string;
+        name?: string;
+      }[];
     };
+    setPendingTf(result.pendingApprovals ?? []);
     setAgent(
       result.status === "waiting_approval" ? "waiting_approval" : result.status,
       result.output || "Turn finished.",
     );
+  }
+
+  async function resolveRail(decision: "approved" | "denied") {
+    let applied = Boolean(publishId);
+    if (tfSession && pendingTf.length) {
+      const approved = await fetch("/api/session/approve", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionId: tfSession,
+          approvals: pendingTf.map((p) => ({
+            threadId: p.threadId,
+            toolCallId: p.toolCallId,
+            allow: decision === "approved",
+          })),
+        }),
+      });
+      setPendingTf([]);
+      applied = applied || approved.ok;
+      if (!approved.ok && !publishId) {
+        setAgent("error", "Could not send the approval to TrueForge.");
+        return;
+      }
+    }
+    if (publishId) {
+      await fetch("/api/dashboards/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "resolve", id: publishId, decision }),
+      });
+    }
+    setPublishId(null);
+    const orgTouched = applied && decision === "approved";
+    setAgent(
+      decision === "approved" ? "done" : "idle",
+      orgTouched
+        ? "Org Close updated."
+        : decision === "approved"
+          ? "Approval sent."
+          : "Publish denied. Personal draft kept.",
+    );
+    await refreshBoard();
   }
 
   const value = useMemo(

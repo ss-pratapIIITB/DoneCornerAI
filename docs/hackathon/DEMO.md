@@ -14,7 +14,9 @@ npx @truefoundry/trueforge          # other terminal
 TRUEFORGE_SANDBOX=1 npm run dev     # if you will drop a CSV
 ```
 
-Register the `donecorner` MCP server (stdio JSON-RPC in `mcp/server.ts`) and the `close-pack` agent (`agents/close-pack.json`) in TrueForge if the query bar should call tools. Sample pack load does **not** need TrueForge.
+In the TrueForge UI, add a model provider. The portal defaults to `TRUEFORGE_MODEL=anthropic/claude-sonnet-4-6`. Override the env if you registered a different name. Query follow-ups 422 until a provider exists; the cube still works.
+
+Register is automatic: when TrueForge is up, the portal creates the `donecorner` remote MCP (`http://localhost:3000/api/mcp`) and the `close-pack` agent. Sample pack load does **not** need TrueForge.
 
 ## Script
 

@@ -8,6 +8,12 @@ export async function GET(): Promise<Response> {
   if (!health.ok) {
     return Response.json(health, { status: 503 });
   }
+  try {
+    const { ensureHarness } = await import("@/lib/trueforge/harness");
+    await ensureHarness();
+  } catch {
+    // Probe succeeded; register on the first session create if this fails.
+  }
   return Response.json(health);
 }
 

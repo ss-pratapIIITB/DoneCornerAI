@@ -11,6 +11,8 @@ test("agent rail waiting fixture shows publish approval", async ({ page }) => {
 test("query bar talks to TrueForge when it is running", async ({ page, request }) => {
   const health = await request.get("/api/session");
   test.skip(!health.ok(), "TrueForge is not running");
+  const session = await request.post("/api/session", { data: {} });
+  test.skip(!session.ok(), "TrueForge has no usable model");
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Ask" })).toBeEnabled();
   await page.getByLabel("Ask the close pack").fill("Why is S&M over budget?");
