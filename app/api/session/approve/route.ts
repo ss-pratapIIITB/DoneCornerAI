@@ -34,18 +34,18 @@ export async function POST(req: Request): Promise<Response> {
     const authorizedProposals: string[] = [];
     const db = getDb();
     migrate(db);
-    for (const approval of body.approvals) {
-      const mapping = authorizeMappingFromRunApproval(db, {
-        runId: body.runId,
-        userId: user.id,
-        toolCallId: approval.toolCallId,
-        allow: approval.allow,
-      });
-      if (mapping?.status === "approved") {
-        authorizedProposals.push(mapping.proposalId);
-      }
-    }
     try {
+      for (const approval of body.approvals) {
+        const mapping = authorizeMappingFromRunApproval(db, {
+          runId: body.runId,
+          userId: user.id,
+          toolCallId: approval.toolCallId,
+          allow: approval.allow,
+        });
+        if (mapping?.status === "approved") {
+          authorizedProposals.push(mapping.proposalId);
+        }
+      }
       const result = await runApprovalTurn(
         body.sessionId,
         body.approvals,
@@ -54,7 +54,6 @@ export async function POST(req: Request): Promise<Response> {
       );
       return Response.json(result);
     } catch (error) {
-      const db = getDb();
       for (const proposalId of authorizedProposals) {
         revokeMappingApproval(db, proposalId);
       }
