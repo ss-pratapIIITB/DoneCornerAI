@@ -273,6 +273,16 @@ export async function runApprovalTurn(
     kind: "question",
     userId,
   });
+  const stream = await client.sessions.createTurnStream(sessionId, {
+    input: approvals.map((a) => ({
+      type: "user.tool_approval" as const,
+      threadId: a.threadId,
+      toolCallId: a.toolCallId,
+      approval: a.allow
+        ? { status: "allow" as const }
+        : { status: "deny" as const, reason: a.reason ?? "denied" },
+    })),
+  });
   for (const approval of approvals) {
     appendRunEvent(db, activeRunId, {
       type: "approval.resolved",
@@ -288,16 +298,6 @@ export async function runApprovalTurn(
   updateRun(db, activeRunId, {
     status: "running",
     currentStage: "approval",
-  });
-  const stream = await client.sessions.createTurnStream(sessionId, {
-    input: approvals.map((a) => ({
-      type: "user.tool_approval" as const,
-      threadId: a.threadId,
-      toolCallId: a.toolCallId,
-      approval: a.allow
-        ? { status: "allow" as const }
-        : { status: "deny" as const, reason: a.reason ?? "denied" },
-    })),
   });
   return collectTurn(stream, activeRunId);
 }
@@ -354,6 +354,15 @@ async function collectTurn(
   const context = createNormalizationContext();
   try {
     for await (const item of stream) {
+      const current = getRun(db, runId);
+      if (
+        current &&
+        (current.status === "done" ||
+          current.status === "error" ||
+          current.status === "cancelled")
+      ) {
+        break;
+      }
       rawEvents.push(item);
       for (const normalized of normalizeTrueForgeEvent(item, context)) {
         const persisted = appendRunEvent(db, runId, normalized);
@@ -361,6 +370,22 @@ async function collectTurn(
       }
     }
   } catch (err) {
+    const current = getRun(db, runId);
+    if (
+      current &&
+      (current.status === "done" ||
+        current.status === "error" ||
+        current.status === "cancelled")
+    ) {
+      return {
+        status: "error",
+        output: err instanceof Error ? err.message : "Turn failed",
+        pendingApprovals: [],
+        charts: [],
+        runId,
+        events: listRunEvents(db, runId),
+      };
+    }
     const message = err instanceof Error ? err.message : "Turn failed";
     appendRunEvent(db, runId, {
       type: "run.failed",

@@ -56,7 +56,7 @@ async function discardArtifacts(artifacts: UploadedArtifact[]): Promise<void> {
       fetch("/api/artifacts", {
         method: "DELETE",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ artifactId: artifact.id }),
+        body: JSON.stringify({ artifactId: artifact.id, confirm: true }),
       }),
     ),
   );
@@ -289,17 +289,39 @@ export function AppShell({ children }: Props) {
     if (!activeRunId || agentStatus !== "running") return;
     let cancelled = false;
     const poll = async () => {
+      let after = 0;
+      let events: RunEvent[] = [];
       while (!cancelled) {
-        const response = await fetch(`/api/runs/${activeRunId}/events`);
-        if (!response.ok) return;
-        const snapshot = (await response.json()) as {
-          run: AgentRun;
-          events: RunEvent[];
-        };
-        if (cancelled) return;
-        applyRunSnapshot(snapshot);
-        if (snapshot.run.status !== "running" && snapshot.run.status !== "queued") {
-          return;
+        try {
+          const response = await fetch(
+            `/api/runs/${activeRunId}/events?after=${after}`,
+          );
+          if (!response.ok) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1000));
+            continue;
+          }
+          const snapshot = (await response.json()) as {
+            run: AgentRun;
+            events: RunEvent[];
+          };
+          if (cancelled) return;
+          const seen = new Set(events.map((event) => event.id));
+          events = [
+            ...events,
+            ...snapshot.events.filter((event) => !seen.has(event.id)),
+          ];
+          after = events.at(-1)?.sequence ?? after;
+          applyRunSnapshot({ run: snapshot.run, events });
+          if (
+            snapshot.run.status !== "running" &&
+            snapshot.run.status !== "queued"
+          ) {
+            return;
+          }
+        } catch {
+          if (cancelled) return;
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
+          continue;
         }
         await new Promise((resolve) => window.setTimeout(resolve, 500));
       }
@@ -516,6 +538,10 @@ export function AppShell({ children }: Props) {
     const hadPublish = Boolean(publishId);
     const hadTfApproval = pendingTf.length > 0;
     if (tfSession && pendingTf.length) {
+      if (!activeRunId) {
+        setAgent("error", "No active run is available for this approval.");
+        return;
+      }
       const approved = await fetch("/api/session/approve", {
         method: "POST",
         headers: { "content-type": "application/json" },
