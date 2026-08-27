@@ -1,9 +1,7 @@
 import { TrueForgeError } from "@truefoundry/trueforge-sdk";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
-import { CLOSE_PACK_AGENT, closePackSpec } from "@/lib/trueforge/agent";
+import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
 import { ensureHarness } from "@/lib/trueforge/harness";
-
-const MODEL = process.env.TRUEFORGE_MODEL ?? "anthropic/claude-sonnet-4-6";
 
 export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reason: string }> {
   try {
@@ -45,7 +43,7 @@ export async function resumeOrCreateSession(sessionId?: string | null): Promise<
     return { id: named.data.id };
   } catch {
     const inline = await client.sessions.create({
-      agent: { spec: closePackSpec(MODEL) },
+      agent: { spec: closePackSpec(closePackModel()) },
     });
     return { id: inline.data.id };
   }
