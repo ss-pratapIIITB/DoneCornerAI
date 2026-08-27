@@ -52,6 +52,11 @@ export async function POST(req: Request): Promise<Response> {
         user.id,
         body.runId,
       );
+      if (result.status === "error") {
+        for (const proposalId of authorizedProposals) {
+          revokeMappingApproval(db, proposalId);
+        }
+      }
       return Response.json(result);
     } catch (error) {
       for (const proposalId of authorizedProposals) {

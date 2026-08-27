@@ -103,6 +103,41 @@ function outputText(value: unknown): string {
   return "";
 }
 
+function chartFromPayload(
+  value: unknown,
+): TurnSummary["charts"][number] | null {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const body = parsed as {
+    chart?: { title?: string; query?: Record<string, unknown> };
+    title?: string;
+    query?: Record<string, unknown>;
+  };
+  const query = body.query ?? body.chart?.query;
+  if (!query || typeof query !== "object") return null;
+  return {
+    title: String(body.chart?.title ?? body.title ?? "Chart"),
+    query,
+  };
+}
+
+function chartsFromRunEvents(
+  events: RunEvent[],
+): TurnSummary["charts"] {
+  return events.flatMap((event) => {
+    if (event.type !== "tool.completed") return [];
+    const chart = chartFromPayload(event.details.response);
+    return chart ? [chart] : [];
+  });
+}
+
 export function summarizeTurnEvents(events: unknown[]): TurnSummary {
   let output = "";
   let status: TurnSummary["status"] = "done";
@@ -131,23 +166,8 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
       }
     }
     if (type === "tool.response" || type === "tool.result") {
-      const raw = outputText(event.content ?? event.text);
-      try {
-        const parsed = JSON.parse(raw) as {
-          chart?: { title?: string; query?: Record<string, unknown> };
-          title?: string;
-          query?: Record<string, unknown>;
-        };
-        const query = parsed.query ?? parsed.chart?.query;
-        if (query && typeof query === "object") {
-          charts.push({
-            title: String(parsed.chart?.title ?? parsed.title ?? "Chart"),
-            query,
-          });
-        }
-      } catch {
-        /* not a chart payload */
-      }
+      const chart = chartFromPayload(outputText(event.content ?? event.text));
+      if (chart) charts.push(chart);
     }
     if (type === "tool.approval_required") {
       status = "waiting_approval";
@@ -363,7 +383,7 @@ function summaryFromPersistedRun(
     status: turnStatusFromRun(run?.status),
     output: events.at(-1)?.summary ?? "",
     pendingApprovals: [],
-    charts: [],
+    charts: chartsFromRunEvents(events),
     runId,
     events,
   };
