@@ -94,11 +94,19 @@ export function CloseCanvas() {
   );
 
   async function loadPack() {
+    const confirmed = window.confirm(
+      "Load the sample lake pack? This replaces current warehouse facts.",
+    );
+    if (!confirmed) return;
     setLoading(true);
     setError(null);
     try {
       await fetch("/api/pack/load", { method: "POST" });
-      const res = await fetch("/api/lake/load", { method: "POST" });
+      const res = await fetch("/api/lake/load", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? "Could not load the lake pack");

@@ -58,14 +58,24 @@ function argumentsFrom(value: unknown): Record<string, unknown> {
   }
 }
 
+export type MappingApprovalInput = {
+  runId: string;
+  userId: string;
+  toolCallId: string;
+  allow: boolean;
+};
+
+export type MappingApprovalRequirement = {
+  proposalId: string;
+  proposalHash: string;
+  artifactSha256: string;
+  runId: string;
+  userId: string;
+};
+
 export function authorizeMappingFromRunApproval(
   db: DatabaseSync,
-  input: {
-    runId: string;
-    userId: string;
-    toolCallId: string;
-    allow: boolean;
-  },
+  input: MappingApprovalInput,
 ): MappingApproval | null {
   const run = getRun(db, input.runId);
   if (!run || run.userId !== input.userId) {
@@ -145,13 +155,7 @@ export function authorizeMappingFromRunApproval(
 
 export function requireMappingApproval(
   db: DatabaseSync,
-  input: {
-    proposalId: string;
-    proposalHash: string;
-    artifactSha256: string;
-    runId: string;
-    userId: string;
-  },
+  input: MappingApprovalRequirement,
 ): MappingApproval {
   const row = db
     .prepare(

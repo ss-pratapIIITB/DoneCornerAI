@@ -24,27 +24,25 @@ export async function POST(req: Request): Promise<Response> {
       }[];
       runId?: string;
     };
-    if (!body.sessionId || !body.approvals?.length) {
+    if (!body.sessionId || !body.approvals?.length || !body.runId?.trim()) {
       return Response.json(
-        { error: "sessionId and approvals required" },
+        { error: "sessionId, runId, and approvals required" },
         { status: 400 },
       );
     }
     const user = userFromRequest(req);
     const authorizedProposals: string[] = [];
-    if (body.runId) {
-      const db = getDb();
-      migrate(db);
-      for (const approval of body.approvals) {
-        const mapping = authorizeMappingFromRunApproval(db, {
-          runId: body.runId,
-          userId: user.id,
-          toolCallId: approval.toolCallId,
-          allow: approval.allow,
-        });
-        if (mapping?.status === "approved") {
-          authorizedProposals.push(mapping.proposalId);
-        }
+    const db = getDb();
+    migrate(db);
+    for (const approval of body.approvals) {
+      const mapping = authorizeMappingFromRunApproval(db, {
+        runId: body.runId,
+        userId: user.id,
+        toolCallId: approval.toolCallId,
+        allow: approval.allow,
+      });
+      if (mapping?.status === "approved") {
+        authorizedProposals.push(mapping.proposalId);
       }
     }
     try {

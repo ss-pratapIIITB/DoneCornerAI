@@ -35,9 +35,15 @@ export async function DELETE(req: Request): Promise<Response> {
   try {
     const user = userFromRequest(req);
     if (!user.canEdit) throw new ForbiddenError();
-    const body = (await req.json()) as { artifactId?: string };
+    const body = (await req.json()) as { artifactId?: string; confirm?: boolean };
     if (!body.artifactId) {
       return Response.json({ error: "artifactId required" }, { status: 400 });
+    }
+    if (body.confirm !== true) {
+      return Response.json(
+        { error: "Confirm is required before discarding an upload." },
+        { status: 400 },
+      );
     }
     const db = getDb();
     migrate(db);

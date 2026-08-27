@@ -9,6 +9,13 @@ export async function POST(req: Request): Promise<Response> {
     if (!userFromRequest(req).canEdit) {
       throw new ForbiddenError("Only finance editors can reset sample data.");
     }
+    const body = (await req.json().catch(() => ({}))) as { confirm?: boolean };
+    if (body.confirm !== true) {
+      return Response.json(
+        { error: "Confirm is required before resetting sample lake data." },
+        { status: 400 },
+      );
+    }
     const result = await seedLake();
     return Response.json(result);
   } catch (err) {

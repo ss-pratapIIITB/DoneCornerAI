@@ -112,6 +112,13 @@ export function updateRun(
 ): AgentRun {
   const current = getRun(db, runId);
   if (!current) throw new Error("Run not found");
+  if (
+    current.status === "done" ||
+    current.status === "error" ||
+    current.status === "cancelled"
+  ) {
+    return current;
+  }
   const nextStatus = patch.status ?? current.status;
   const nextStage = patch.currentStage ?? current.currentStage;
   const updatedAt = new Date().toISOString();

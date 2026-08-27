@@ -17,4 +17,18 @@ describe("lake sample reset route", () => {
     );
     expect(response.status).toBe(403);
   });
+
+  it("rejects an unconfirmed editor reset", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/lake/load", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-demo-user": "cfo",
+        },
+        body: JSON.stringify({}),
+      }),
+    );
+    expect(response.status).toBe(400);
+  });
 });
