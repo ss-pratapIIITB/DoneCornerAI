@@ -40,8 +40,14 @@ function variancePct(actual: number, budget: number): number {
 
 export function CloseCanvas() {
   const mode = usePortalMode();
-  const { board, requestPublish, lastCharts, pinChart, loadSamplePack } =
-    usePortal();
+  const {
+    board,
+    requestPublish,
+    lastCharts,
+    pinChart,
+    loadSamplePack,
+    canLoadSamplePack,
+  } = usePortal();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState<LakeQuery>(defaultQuery);
@@ -152,7 +158,7 @@ export function CloseCanvas() {
             type="button"
             className="secondary-action"
             onClick={() => void loadPack()}
-            disabled={loading}
+            disabled={loading || !canLoadSamplePack}
           >
             {loading ? "Loading…" : "Load sample pack"}
           </button>

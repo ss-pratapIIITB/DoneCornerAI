@@ -271,7 +271,7 @@ export async function runUserTurn(
     details: { content: userMessage, promptVersionId: guidance.id },
   });
   const stream = await client.sessions.createTurnStream(sessionId, {
-    input: [{ type: "user.message", content: assembled.fullText }],
+    input: [{ type: "user.message", content: assembled.turnText }],
   });
   return collectTurn(stream, runId);
 }

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
   appendRunEvent,
+  bindRunPromptVersion,
   createRun,
   getRun,
   listRunEvents,
@@ -117,5 +118,17 @@ describe("run ledger", () => {
         userId: "fpna",
       }),
     ).toEqual([fpna]);
+  });
+
+  it("binds the prompt version sent on the current turn", () => {
+    const db = freshDb();
+    const run = createRun(db, {
+      sessionId: "session-prompt",
+      kind: "question",
+      userId: "cfo",
+    });
+    bindRunPromptVersion(db, run.id, "prompt_old");
+    bindRunPromptVersion(db, run.id, "prompt_new");
+    expect(getRun(db, run.id)?.promptVersionId).toBe("prompt_new");
   });
 });

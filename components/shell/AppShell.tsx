@@ -33,6 +33,7 @@ type PortalValue = {
   refreshBoard: () => Promise<void>;
   requestPublish: () => Promise<void>;
   loadSamplePack: () => Promise<number | undefined>;
+  canLoadSamplePack: boolean;
   setAgent: (status: AgentStatus, detail: string) => void;
   lastCharts: AgentChart[];
   pinChart: (chart: AgentChart, boardId?: string) => Promise<void>;
@@ -551,13 +552,7 @@ export function AppShell({ children }: Props) {
     }
   }
 
-  async function loadSamplePack(): Promise<number | undefined> {
-    if (!queryDisabled) {
-      await ask(
-        "Load the sample Northstar close pack. Call load_lake now, then present_chart for revenue by period.",
-      );
-      return;
-    }
+  async function seedSamplePackHttp(): Promise<number> {
     await fetch("/api/pack/load", { method: "POST" });
     const res = await fetch("/api/lake/load", {
       method: "POST",
@@ -574,6 +569,21 @@ export function AppShell({ children }: Props) {
       `Lake loaded without TrueForge. ${body.facts.toLocaleString()} fact rows in Postgres.`,
     );
     return body.facts;
+  }
+
+  async function loadSamplePack(): Promise<number | undefined> {
+    if (agentStatus === "running" || agentStatus === "waiting_approval") {
+      throw new Error(
+        "Wait for the agent to finish or resolve approval before loading the sample pack.",
+      );
+    }
+    try {
+      await ask(
+        "Load the sample Northstar close pack. Call load_lake now, then present_chart for revenue by period.",
+      );
+    } catch {
+      return seedSamplePackHttp();
+    }
   }
 
   async function resolveRail(decision: "approved" | "denied") {
@@ -721,11 +731,13 @@ export function AppShell({ children }: Props) {
       refreshBoard,
       requestPublish,
       loadSamplePack,
+      canLoadSamplePack:
+        agentStatus !== "running" && agentStatus !== "waiting_approval",
       setAgent,
       lastCharts,
       pinChart,
     }),
-    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, loadSamplePack, setAgent, lastCharts, pinChart],
+    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, loadSamplePack, agentStatus, setAgent, lastCharts, pinChart],
   );
 
   const routeLabel =

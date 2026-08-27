@@ -67,6 +67,10 @@ describe("prompt assembly", () => {
     expect(assembled.fullText).toContain("Explain cash runway");
     expect(assembled.fullText).toContain("Cash, then exceptions");
     expect(assembled.fullText).toContain("Why did cash drop?");
+    expect(assembled.turnText).not.toContain(SAFETY_POLICY);
+    expect(assembled.turnText).not.toContain(TOOL_POLICY);
+    expect(assembled.turnText).toContain("Explain cash runway");
+    expect(assembled.turnText).toContain("Why did cash drop?");
   });
 
   it("rejects guidance that tries to remove approval or expand tool access", () => {

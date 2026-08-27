@@ -112,7 +112,7 @@ export function bindRunPromptVersion(
 ): void {
   db.prepare(
     `UPDATE agent_runs
-     SET prompt_version_id = COALESCE(prompt_version_id, ?)
+     SET prompt_version_id = ?
      WHERE id = ?`,
   ).run(promptVersionId, runId);
 }

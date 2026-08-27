@@ -28,7 +28,7 @@ vi.mock("@/lib/trueforge/client", () => ({
 }));
 
 import { getDb, migrate } from "@/lib/db/sqlite";
-import { createRun, getRun, listRunEvents } from "@/lib/runs/ledger";
+import { createRun, getRun, listRunEvents, bindRunPromptVersion } from "@/lib/runs/ledger";
 import { bindAgentSession } from "@/lib/runs/sessions";
 import { runUserTurn } from "@/lib/trueforge/session";
 
@@ -46,6 +46,7 @@ describe("runUserTurn display message", () => {
       userId: "cfo",
       kind: "file_ingest",
     });
+    bindRunPromptVersion(db, run.id, "prompt_stale");
 
     await runUserTurn(
       "session-display",
@@ -67,7 +68,9 @@ describe("runUserTurn display message", () => {
     });
     expect(sent.content).toContain("art_private");
     expect(sent.content).toContain("Inspect finance.csv");
-    expect(sent.content).toContain("Immutable product role and safety policy");
+    expect(sent.content).not.toContain("Immutable product role and safety policy");
+    expect(sent.content).not.toContain("Immutable tool and approval policy");
     expect(getRun(db, run.id)?.promptVersionId).toMatch(/^prompt_/);
+    expect(getRun(db, run.id)?.promptVersionId).not.toBe("prompt_stale");
   });
 });
