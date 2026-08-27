@@ -99,3 +99,19 @@ export function listPersonalDashboards(
     .all(userId) as DashboardRow[];
   return rows.map(rowToDashboard);
 }
+
+export function createPersonalDashboard(
+  db: DatabaseSync,
+  userId: string,
+  name: string,
+): Dashboard {
+  assertCanEdit(userId);
+  const label = name.trim() || "Untitled board";
+  return upsert(db, {
+    id: `personal-${userId}-${randomUUID().slice(0, 8)}`,
+    name: label,
+    owner: userId,
+    forkedFrom: null,
+    widgets: [],
+  });
+}

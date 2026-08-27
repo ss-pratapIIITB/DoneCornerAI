@@ -21,6 +21,7 @@ export function QueryBar({ disabled, reason, onSubmit }: Props) {
         Ask the close pack
       </label>
       <input
+        suppressHydrationWarning
         id="close-query"
         name="q"
         disabled={disabled}
@@ -30,7 +31,12 @@ export function QueryBar({ disabled, reason, onSubmit }: Props) {
             : "Ask why S&M is over budget…"
         }
       />
-      <button type="submit" className="ask-submit" disabled={disabled}>
+      <button
+        suppressHydrationWarning
+        type="submit"
+        className="ask-submit"
+        disabled={disabled}
+      >
         Ask
       </button>
     </form>

@@ -2,7 +2,9 @@ import { describeSchema } from "@/lib/cube/schema";
 import type { CubeQuery } from "@/lib/cube/query";
 import type { MetricId } from "@/lib/cube/types";
 
-export type WidgetType = "kpi" | "bar" | "line" | "table";
+export type WidgetType = "kpi" | "bar" | "line" | "table" | "pnl_table";
+
+export type WidgetLayout = { w: number; h: number };
 
 export type Widget = {
   id: string;
@@ -10,6 +12,12 @@ export type Widget = {
   title: string;
   query: CubeQuery;
   note: string;
+  layout?: WidgetLayout;
+  lake?: {
+    metric: string;
+    grain: string;
+    filters: Record<string, unknown>;
+  };
 };
 
 export type Dashboard = {

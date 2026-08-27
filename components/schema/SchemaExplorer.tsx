@@ -32,8 +32,10 @@ export function SchemaExplorer({ schema }: Props) {
     <div className="schema-page">
       <h1>Schema</h1>
       <p className="empty">
-        Tables and metric definitions for the Northstar close pack. In Edit, add a
-        metric to your personal board as a KPI or bar.
+        Cube tables stay for uploads. The live warehouse is Postgres: entities
+        (group → vertical → company → category → product) and facts (period,
+        account, amount, scenario). Ask the agent to <code>query_sql</code> or
+        <code>present_chart</code>.
       </p>
       {error ? <p className="error">{error}</p> : null}
       {message ? <p className="ok">{message}</p> : null}

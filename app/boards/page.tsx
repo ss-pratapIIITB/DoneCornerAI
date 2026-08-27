@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import type { Dashboard } from "@/lib/dashboards/widgets";
 
 function BoardsList() {
+  const router = useRouter();
   const [boards, setBoards] = useState<Dashboard[]>([]);
 
   useEffect(() => {
@@ -14,10 +16,16 @@ function BoardsList() {
     })();
   }, []);
 
+  function openBoard(id: string) {
+    localStorage.setItem("donecorner.board", id);
+    router.push("/");
+  }
+
   if (!boards.length) {
     return (
       <p className="empty">
-        Personal forks of Close appear here after you enter Edit.
+        Personal forks of Close appear here after you enter Edit. Pin an agent
+        chart onto a named board and it will show up in this list.
       </p>
     );
   }
@@ -26,8 +34,10 @@ function BoardsList() {
     <ul className="widget-list">
       {boards.map((b) => (
         <li key={b.id} className="widget-card">
-          <strong>{b.name}</strong>
-          <span className="empty"> · {b.widgets.length} widgets</span>
+          <button type="button" className="board-open" onClick={() => openBoard(b.id)}>
+            <strong>{b.name}</strong>
+            <span className="empty"> · {b.widgets.length} widgets</span>
+          </button>
         </li>
       ))}
     </ul>
