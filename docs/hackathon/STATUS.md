@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 4 — Hackathon evidence
 
-**Current step:** PR + Qodo Highs on feat/agent-activity-rail (smooth rail, cookie theme, public-company MCP).
+**Current step:** Merged PR 17 (Qodo Highs closed; remaining Mediums deferred).
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
