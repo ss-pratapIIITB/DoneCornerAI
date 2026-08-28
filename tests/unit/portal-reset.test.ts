@@ -132,6 +132,18 @@ describe("portal reset", () => {
     );
     expect(missing.status).toBe(403);
 
+    const spoofed = await POST(
+      new Request("http://localhost/api/portal/reset", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-demo-user": "admin",
+        },
+        body: JSON.stringify({ confirm: true }),
+      }),
+    );
+    expect(spoofed.status).toBe(403);
+
     const editor = await POST(
       new Request("http://localhost/api/portal/reset", {
         method: "POST",

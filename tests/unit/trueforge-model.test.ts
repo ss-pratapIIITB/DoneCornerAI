@@ -106,6 +106,9 @@ describe("donecornerMcpUrl", () => {
     expect(donecornerMcpUrl("http://localhost:3001/")).toBe(
       "http://127.0.0.1:3001/api/mcp",
     );
+    expect(donecornerMcpUrl("http://[::1]:3001/api/session")).toBe(
+      "http://127.0.0.1:3001/api/mcp",
+    );
   });
 
   it("ignores an untrusted request origin so MCP registration cannot be poisoned", () => {

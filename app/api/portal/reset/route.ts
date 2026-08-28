@@ -1,4 +1,5 @@
-import { jsonError, userFromRequest } from "@/lib/api/http";
+import { jsonError } from "@/lib/api/http";
+import { parseDemoUser } from "@/lib/identity/demo-users";
 import { ForbiddenError } from "@/lib/identity/errors";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import { resetPortalState } from "@/lib/portal/reset";
@@ -11,7 +12,7 @@ export async function POST(req: Request): Promise<Response> {
     if (header !== "cfo" && header !== "fpna") {
       throw new ForbiddenError("Sign in as a finance editor to reset the portal.");
     }
-    const user = userFromRequest(req);
+    const user = parseDemoUser(header);
     if (!user.canEdit) {
       throw new ForbiddenError("Only finance editors can reset the portal.");
     }
