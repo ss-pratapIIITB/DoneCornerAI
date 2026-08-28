@@ -12,6 +12,22 @@ export type ReplayApproval = {
   kind: "approval" | "question";
 };
 
+export function asReplayApprovals(
+  items?: {
+    threadId: string;
+    toolCallId: string;
+    name?: string;
+    kind?: "approval" | "question";
+  }[],
+): ReplayApproval[] {
+  return (items ?? []).map((item) => ({
+    threadId: item.threadId,
+    toolCallId: item.toolCallId,
+    name: item.name,
+    kind: item.kind ?? "approval",
+  }));
+}
+
 function queryFromPayload(value: unknown): ReplayChart | null {
   if (!value || typeof value !== "object") return null;
   const payload = value as {

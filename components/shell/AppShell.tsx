@@ -18,7 +18,7 @@ import {
 import { ModeBar } from "@/components/shell/ModeBar";
 import type { Dashboard } from "@/lib/dashboards/widgets";
 import type { LakeQuery } from "@/lib/lake/types";
-import { chartsFromRunEvents, sessionRailState, type ReplayApproval } from "@/lib/runs/replay";
+import { asReplayApprovals, chartsFromRunEvents, sessionRailState, type ReplayApproval } from "@/lib/runs/replay";
 import type { AgentRun, RunEvent } from "@/lib/runs/types";
 
 type Mode = "view" | "edit";
@@ -525,10 +525,11 @@ export function AppShell({ children }: Props) {
         threadId: string;
         toolCallId: string;
         name?: string;
+        kind?: "approval" | "question";
       }[];
       charts?: { title: string; query: Record<string, unknown> }[];
     };
-    setPendingTf(result.pendingApprovals ?? []);
+    setPendingTf(asReplayApprovals(result.pendingApprovals));
     const answer = result.output?.trim() || "Turn finished.";
     setTurns((current) =>
       current.map((item) =>
@@ -612,13 +613,14 @@ export function AppShell({ children }: Props) {
           threadId: string;
           toolCallId: string;
           name?: string;
+          kind?: "approval" | "question";
         }[];
         runId?: string;
         events?: RunEvent[];
         charts?: { title: string; query: Record<string, unknown> }[];
         error?: string;
       };
-      setPendingTf(summary.pendingApprovals ?? []);
+      setPendingTf(asReplayApprovals(summary.pendingApprovals));
       if (summary.runId && summary.events) {
         setTurns((current) =>
           current.map((turn) =>

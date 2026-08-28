@@ -334,6 +334,24 @@ export async function runApprovalTurn(
       pendingApprovalsFromRunEvents(listRunEvents(db, activeRunId)),
     ),
   });
+  updateRun(db, activeRunId, {
+    status: "running",
+    currentStage: "approval",
+  });
+  const result = await collectTurn(stream, activeRunId);
+  if (result.status === "error") {
+    updateRun(db, activeRunId, {
+      status: "waiting_approval",
+      currentStage: "approval",
+    });
+    const events = listRunEvents(db, activeRunId);
+    return {
+      ...result,
+      status: "waiting_approval",
+      pendingApprovals: pendingApprovalsFromRunEvents(events),
+      events,
+    };
+  }
   for (const approval of approvals) {
     appendRunEvent(db, activeRunId, {
       type: "approval.resolved",
@@ -346,11 +364,15 @@ export async function runApprovalTurn(
       },
     });
   }
-  updateRun(db, activeRunId, {
-    status: "running",
-    currentStage: "approval",
-  });
-  return collectTurn(stream, activeRunId);
+  const events = listRunEvents(db, activeRunId);
+  return {
+    ...result,
+    pendingApprovals:
+      result.status === "waiting_approval"
+        ? pendingApprovalsFromRunEvents(events)
+        : result.pendingApprovals,
+    events,
+  };
 }
 
 function ensureRun(

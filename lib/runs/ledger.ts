@@ -125,9 +125,10 @@ export function updateRun(
   const current = getRun(db, runId);
   if (!current) throw new Error("Run not found");
   if (
-    current.status === "done" ||
-    current.status === "error" ||
-    current.status === "cancelled"
+    (current.status === "done" ||
+      current.status === "error" ||
+      current.status === "cancelled") &&
+    !(current.status === "error" && patch.status === "waiting_approval")
   ) {
     return current;
   }
