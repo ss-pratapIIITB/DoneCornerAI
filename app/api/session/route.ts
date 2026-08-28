@@ -3,14 +3,14 @@ import { probeTrueForge, resumeOrCreateSession } from "@/lib/trueforge/session";
 
 export const runtime = "nodejs";
 
-export async function GET(): Promise<Response> {
+export async function GET(req: Request): Promise<Response> {
   const health = await probeTrueForge();
   if (!health.ok) {
     return Response.json(health, { status: 503 });
   }
   try {
     const { ensureHarness } = await import("@/lib/trueforge/harness");
-    await ensureHarness();
+    await ensureHarness(req.url);
   } catch {
     // Probe succeeded; register on the first session create if this fails.
   }
@@ -27,6 +27,7 @@ export async function POST(req: Request): Promise<Response> {
     const session = await resumeOrCreateSession(
       body.sessionId,
       userFromRequest(req).id,
+      req.url,
     );
     return Response.json(session);
   } catch (err) {

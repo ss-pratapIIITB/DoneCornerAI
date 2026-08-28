@@ -36,6 +36,9 @@ describe("closePackModel", () => {
       enabled: false,
     });
     expect(CLOSE_PACK_INSTRUCTIONS).toMatch(/never call ask_user_question/i);
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(
+      /do not write that you need approval/i,
+    );
   });
 
   it("does not require TrueForge skills that may be unconfigured", () => {
@@ -66,6 +69,20 @@ describe("closePackModel", () => {
       /organization publish remains separate and approval-gated/i,
     );
   });
+
+  it("tells the model to present month comparisons as one filtered chart", () => {
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(/present_chart/);
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(/filters\.period/i);
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(/vertical/i);
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(
+      /do not chart every period and then extract two months/i,
+    );
+  });
+
+  it("sends the model to public-web MCP for real-company comparables", () => {
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(/lookup_public_company/);
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(/do not write public-web facts into the lake/i);
+  });
 });
 
 describe("donecornerMcpUrl", () => {
@@ -78,5 +95,27 @@ describe("donecornerMcpUrl", () => {
     delete process.env.DONECORNER_MCP_URL;
     process.env.PORT = "3001";
     expect(donecornerMcpUrl()).toBe("http://127.0.0.1:3001/api/mcp");
+  });
+
+  it("uses the live portal origin when Next bound a different port than PORT", () => {
+    delete process.env.DONECORNER_MCP_URL;
+    delete process.env.PORT;
+    expect(donecornerMcpUrl("http://127.0.0.1:3001/api/session")).toBe(
+      "http://127.0.0.1:3001/api/mcp",
+    );
+    expect(donecornerMcpUrl("http://localhost:3001/")).toBe(
+      "http://127.0.0.1:3001/api/mcp",
+    );
+    expect(donecornerMcpUrl("http://[::1]:3001/api/session")).toBe(
+      "http://127.0.0.1:3001/api/mcp",
+    );
+  });
+
+  it("ignores an untrusted request origin so MCP registration cannot be poisoned", () => {
+    delete process.env.DONECORNER_MCP_URL;
+    process.env.PORT = "3000";
+    expect(donecornerMcpUrl("https://evil.example/api/session")).toBe(
+      "http://127.0.0.1:3000/api/mcp",
+    );
   });
 });

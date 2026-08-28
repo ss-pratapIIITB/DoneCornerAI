@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -16,14 +17,20 @@ import {
   type AgentTurn,
 } from "@/components/shell/AgentRail";
 import { ModeBar } from "@/components/shell/ModeBar";
+import { PortalResetConfirm } from "@/components/shell/PortalResetConfirm";
+import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import type { AgentChartSpec } from "@/components/dashboard/AgentChartBlock";
 import type { Dashboard } from "@/lib/dashboards/widgets";
-import type { LakeQuery } from "@/lib/lake/types";
-import { asReplayApprovals, chartsFromRunEvents, sessionRailState, type ReplayApproval } from "@/lib/runs/replay";
+import { asReplayApprovals, pendingApprovalsForRequest, sessionRailState, type ReplayApproval } from "@/lib/runs/replay";
+import { mergeTurnIntoRun } from "@/lib/runs/turn-merge";
 import type { AgentRun, RunEvent } from "@/lib/runs/types";
+import {
+  LOAD_SAMPLE_DISPLAY,
+  closePackTurnMessage,
+  loadSampleAgentMessage,
+} from "@/lib/trueforge/load-lake-turn";
 
 type Mode = "view" | "edit";
-
-export type AgentChart = { title: string; query: LakeQuery };
 
 type PortalValue = {
   mode: Mode;
@@ -35,8 +42,7 @@ type PortalValue = {
   loadSamplePack: () => Promise<number | undefined>;
   canLoadSamplePack: boolean;
   setAgent: (status: AgentStatus, detail: string) => void;
-  lastCharts: AgentChart[];
-  pinChart: (chart: AgentChart, boardId?: string) => Promise<void>;
+  pinChart: (chart: AgentChartSpec, boardId?: string) => Promise<void>;
 };
 
 const PortalContext = createContext<PortalValue | null>(null);
@@ -71,6 +77,20 @@ async function markRunFailed(runId: string, summary: string): Promise<void> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ summary }),
   }).catch(() => undefined);
+}
+
+async function readRunEvents(
+  runId: string,
+  fallback: RunEvent[],
+): Promise<RunEvent[]> {
+  try {
+    const response = await fetch(`/api/runs/${encodeURIComponent(runId)}/events`);
+    if (!response.ok) return fallback;
+    const snapshot = (await response.json()) as { events?: RunEvent[] };
+    return snapshot.events?.length ? snapshot.events : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 const TF_SESSION = "donecorner.tf.session";
@@ -108,21 +128,19 @@ function questionFromEvents(events: RunEvent[]): string {
   );
 }
 
-function chartsForBoard(events: RunEvent[]): AgentChart[] {
-  return chartsFromRunEvents(events).map((chart) => ({
-    title: chart.title,
-    query: {
-      metric: String(chart.query.metric ?? "revenue"),
-      grain: String(chart.query.grain ?? "period") as LakeQuery["grain"],
-      filters: (chart.query.filters ?? { scenario: "actual" }) as LakeQuery["filters"],
-    },
-  }));
-}
-
 function uiRunStatus(status: AgentRun["status"]): AgentStatus {
   if (status === "queued") return "running";
   if (status === "cancelled") return "error";
   return status;
+}
+
+function isTerminalRun(status: AgentRun["status"]): boolean {
+  return (
+    status === "done" ||
+    status === "error" ||
+    status === "cancelled" ||
+    status === "waiting_approval"
+  );
 }
 
 type Props = {
@@ -163,8 +181,11 @@ export function AppShell({ children }: Props) {
   const [tfSession, setTfSession] = useState<string | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [pendingTf, setPendingTf] = useState<ReplayApproval[]>([]);
-  const [lastCharts, setLastCharts] = useState<AgentChart[]>([]);
+  const [railBusy, setRailBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [turns, setTurns] = useState<AgentTurn[]>([]);
+  const turnsRef = useRef(turns);
+  turnsRef.current = turns;
 
   const setAgent = useCallback((status: AgentStatus, detail: string) => {
     setAgentStatus(status);
@@ -173,33 +194,40 @@ export function AppShell({ children }: Props) {
 
   const applyRunSnapshot = useCallback(
     (snapshot: { run: AgentRun; events: RunEvent[] }) => {
-      const answer = answerFromEvents(snapshot.events);
+      const existing = turnsRef.current.find((turn) => turn.id === snapshot.run.id);
+      const keepStatus =
+        Boolean(existing?.run) &&
+        isTerminalRun(existing!.run!.status) &&
+        !isTerminalRun(snapshot.run.status);
+      const run = keepStatus
+        ? {
+            ...snapshot.run,
+            status: existing!.run!.status,
+            currentStage: existing!.run!.currentStage,
+          }
+        : snapshot.run;
+      const events =
+        snapshot.events.length >= (existing?.events.length ?? 0)
+          ? snapshot.events
+          : existing?.events ?? [];
+      const answer = answerFromEvents(events) || existing?.a || "";
       setTurns((current) =>
         current.map((turn) =>
-          turn.id === snapshot.run.id
-            ? {
-                ...turn,
-                a: answer,
-                run: snapshot.run,
-                events: snapshot.events,
-              }
-            : turn,
+          turn.id === run.id ? { ...turn, a: answer, run, events } : turn,
         ),
       );
       setPendingTf(
-        snapshot.run.status === "waiting_approval"
+        run.status === "waiting_approval"
           ? sessionRailState([
               {
-                id: snapshot.run.id,
-                status: snapshot.run.status,
-                events: snapshot.events,
+                id: run.id,
+                status: run.status,
+                events,
               },
             ]).pending
           : [],
       );
-      const status = uiRunStatus(snapshot.run.status);
-      const charts = chartsForBoard(snapshot.events);
-      if (charts.length) setLastCharts(charts);
+      const status = uiRunStatus(run.status);
       setAgent(
         status,
         answer ||
@@ -247,8 +275,6 @@ export function AppShell({ children }: Props) {
     setAgentStatus(rail.status);
     const active =
       runs.find((run) => run.id === rail.activeRunId) ?? latest;
-    const charts = chartsForBoard(active.events);
-    if (charts.length) setLastCharts(charts);
     const waitingQuestion = rail.pending.some((item) => item.kind === "question");
     setAgentDetail(
       answerFromEvents(active.events) ||
@@ -385,12 +411,15 @@ export function AppShell({ children }: Props) {
     );
   }, [board, enterEdit, setAgent]);
 
-  async function ask(q: string, files: File[] = []): Promise<AgentStatus> {
+  async function ask(
+    q: string,
+    files: File[] = [],
+    agentMessage?: (runId: string) => string,
+  ): Promise<AgentStatus> {
     setAgent(
       "running",
       files.length ? "Quarantining attached files…" : "Starting agent run…",
     );
-    setLastCharts([]);
     const created = await fetch("/api/session", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -475,14 +504,19 @@ export function AppShell({ children }: Props) {
         events: [],
       },
     ]);
-    const prompt = board
-      ? `${displayMessage}\n\nCurrent board id: ${board.id}. Use query_lake or query_sql and present_chart. userId is cfo.`
-      : displayMessage;
     const artifactContext = artifacts.length
-      ? `\n\nThis is file ingestion run ${run.id}. Process every quarantined artifact through inspect_file, sandbox validation, get_mapping_proposal, and approval-gated apply_mapping:\n${artifacts
+      ? `This is file ingestion run ${run.id}. Process every quarantined artifact through inspect_file, sandbox validation, get_mapping_proposal, and approval-gated apply_mapping:\n${artifacts
           .map((artifact) => `- artifactId=${artifact.id} name=${artifact.name}`)
           .join("\n")}`
       : "";
+    const message = agentMessage
+      ? agentMessage(run.id)
+      : closePackTurnMessage({
+          displayMessage,
+          runId: run.id,
+          boardId: board?.id,
+          artifactContext,
+        });
     let turn: Response;
     try {
       turn = await fetch("/api/session/turn", {
@@ -493,7 +527,7 @@ export function AppShell({ children }: Props) {
           runId: run.id,
           kind,
           displayMessage,
-          message: `${prompt}${artifactContext}`,
+          message,
         }),
       });
     } catch (error) {
@@ -529,27 +563,29 @@ export function AppShell({ children }: Props) {
       }[];
       charts?: { title: string; query: Record<string, unknown> }[];
     };
-    setPendingTf(asReplayApprovals(result.pendingApprovals));
+    const events = result.events?.length
+      ? result.events
+      : await readRunEvents(run.id, []);
+    const merged = mergeTurnIntoRun(run, result.status);
     const answer = result.output?.trim() || "Turn finished.";
     setTurns((current) =>
       current.map((item) =>
         item.id === run.id
-          ? { ...item, a: answer, events: result.events ?? item.events }
+          ? {
+              ...item,
+              a: answer,
+              run: merged,
+              events: events.length ? events : item.events,
+            }
           : item,
       ),
     );
-    if (result.charts?.length) {
-      setLastCharts(
-        result.charts.map((c) => ({
-          title: c.title,
-          query: {
-            metric: String(c.query.metric ?? "revenue"),
-            grain: String(c.query.grain ?? "period") as LakeQuery["grain"],
-            filters: (c.query.filters ?? { scenario: "actual" }) as LakeQuery["filters"],
-          },
-        })),
-      );
-    }
+    setPendingTf(
+      pendingApprovalsForRequest(
+        asReplayApprovals(result.pendingApprovals),
+        events,
+      ),
+    );
     setAgent(
       result.status === "waiting_approval" ? "waiting_approval" : result.status,
       answer,
@@ -574,8 +610,8 @@ export function AppShell({ children }: Props) {
         "Wait for the agent to finish or resolve approval before loading the sample pack.",
       );
     }
-    const status = await ask(
-      "Request approval to load_lake the sample Northstar close pack with this runId and userId=cfo, then present_chart for revenue by period.",
+    const status = await ask(LOAD_SAMPLE_DISPLAY, [], (runId) =>
+      loadSampleAgentMessage(runId, board?.id),
     );
     if (status === "error") {
       throw new Error(
@@ -586,107 +622,142 @@ export function AppShell({ children }: Props) {
   }
 
   async function resolveRail(decision: "approved" | "denied") {
-    const hadPublish = Boolean(publishId);
-    const hadTfApproval = pendingTf.length > 0;
-    if (tfSession && pendingTf.length) {
-      if (!activeRunId) {
-        setAgent("error", "No active run is available for this approval.");
-        return;
-      }
-      const approved = await fetch("/api/session/approve", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          sessionId: tfSession,
-          runId: activeRunId,
-          approvals: pendingTf.map((p) => ({
-            threadId: p.threadId,
-            toolCallId: p.toolCallId,
-            allow: decision === "approved",
-          })),
-        }),
-      });
-      const summary = (await approved.json().catch(() => ({}))) as {
-        status?: AgentStatus;
-        output?: string;
-        pendingApprovals?: {
-          threadId: string;
-          toolCallId: string;
-          name?: string;
-          kind?: "approval" | "question";
-        }[];
-        runId?: string;
-        events?: RunEvent[];
-        charts?: { title: string; query: Record<string, unknown> }[];
-        error?: string;
-      };
-      setPendingTf(asReplayApprovals(summary.pendingApprovals));
-      if (summary.runId && summary.events) {
-        setTurns((current) =>
-          current.map((turn) =>
-            turn.id === summary.runId
-              ? {
-                  ...turn,
-                  a: summary.output ?? answerFromEvents(summary.events ?? []),
-                  events: summary.events,
-                }
-              : turn,
-          ),
-        );
-      }
-      if (summary.charts?.length) {
-        setLastCharts(
-          summary.charts.map((chart) => ({
-            title: chart.title,
-            query: {
-              metric: String(chart.query.metric ?? "revenue"),
-              grain: String(chart.query.grain ?? "period") as LakeQuery["grain"],
-              filters: (chart.query.filters ?? {
-                scenario: "actual",
-              }) as LakeQuery["filters"],
-            },
-          })),
-        );
-      }
-      if (!approved.ok || summary.status === "error") {
-        setAgent("error", summary.output ?? summary.error ?? "Approval turn failed.");
-        return;
-      }
-      if (summary.status === "waiting_approval") {
-        await hydrateRuns(tfSession);
-        setAgent(
-          "waiting_approval",
-          summary.output || "Still waiting for approval.",
-        );
-        return;
-      }
-    }
-    if (publishId) {
-      const resolved = await fetch("/api/dashboards/publish", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "resolve", id: publishId, decision }),
-      });
-      if (!resolved.ok) {
-        setAgent("error", "Could not apply the publish decision.");
-        return;
-      }
-    }
-    setPublishId(null);
-    setAgent(
-      decision === "approved" ? "done" : "idle",
-      decision === "approved"
-        ? hadPublish
-          ? "Org Close updated."
-          : "Approval sent."
-        : "Publish denied. Personal draft kept.",
+    if (railBusy) return;
+    const activeTurn = turns.find((turn) => turn.id === activeRunId);
+    const pending = pendingApprovalsForRequest(
+      pendingTf,
+      activeTurn?.events ?? [],
     );
-    if (tfSession && hadTfApproval) await hydrateRuns(tfSession);
-    await refreshBoard();
+    const hadPublish = Boolean(publishId);
+    const hadTfApproval = pending.length > 0;
+    if (!pending.length && !publishId) {
+      setAgent(
+        "error",
+        "No approval call is ready yet. Wait a moment and try again.",
+      );
+      return;
+    }
+    if (tfSession && pending.length && !activeRunId) {
+      setAgent("error", "No active run is available for this approval.");
+      return;
+    }
+    setRailBusy(true);
+    setAgentDetail(
+      decision === "approved" ? "Applying approval…" : "Denying the action…",
+    );
+    try {
+      if (tfSession && pending.length && activeRunId) {
+        const approved = await fetch("/api/session/approve", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            sessionId: tfSession,
+            runId: activeRunId,
+            approvals: pending.map((item) => ({
+              threadId: item.threadId,
+              toolCallId: item.toolCallId,
+              allow: decision === "approved",
+            })),
+          }),
+        });
+        const summary = (await approved.json().catch(() => ({}))) as {
+          status?: AgentStatus;
+          output?: string;
+          pendingApprovals?: {
+            threadId: string;
+            toolCallId: string;
+            name?: string;
+            kind?: "approval" | "question";
+          }[];
+          runId?: string;
+          events?: RunEvent[];
+          charts?: { title: string; query: Record<string, unknown> }[];
+          error?: string;
+        };
+        setPendingTf(asReplayApprovals(summary.pendingApprovals));
+        if (summary.runId && summary.events) {
+          setTurns((current) =>
+            current.map((turn) =>
+              turn.id === summary.runId
+                ? {
+                    ...turn,
+                    a: summary.output ?? answerFromEvents(summary.events ?? []),
+                    events: summary.events,
+                    run:
+                      turn.run && summary.status
+                        ? mergeTurnIntoRun(turn.run, summary.status)
+                        : turn.run,
+                  }
+                : turn,
+            ),
+          );
+        }
+        if (!approved.ok || summary.status === "error") {
+          setAgent(
+            "error",
+            summary.output ?? summary.error ?? "Approval turn failed.",
+          );
+          return;
+        }
+        if (summary.status === "waiting_approval") {
+          await hydrateRuns(tfSession);
+          setAgent(
+            "waiting_approval",
+            summary.output || "Still waiting for approval.",
+          );
+          return;
+        }
+      }
+      if (publishId) {
+        const resolved = await fetch("/api/dashboards/publish", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "resolve", id: publishId, decision }),
+        });
+        if (!resolved.ok) {
+          setAgent("error", "Could not apply the publish decision.");
+          return;
+        }
+      }
+      setPublishId(null);
+      setAgent(
+        decision === "approved" ? "done" : "idle",
+        decision === "approved"
+          ? hadPublish
+            ? "Org Close updated."
+            : "Approval sent."
+          : "Publish denied. Personal draft kept.",
+      );
+      if (tfSession && hadTfApproval) await hydrateRuns(tfSession);
+      await refreshBoard();
+    } finally {
+      setRailBusy(false);
+    }
+  }
+
+  async function resetPortal() {
+    setResetBusy(true);
+    try {
+      const res = await fetch("/api/portal/reset", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-demo-user": "cfo",
+        },
+        body: JSON.stringify({ confirm: true }),
+      });
+      if (!res.ok) throw new Error("Could not reset the portal.");
+      localStorage.removeItem(TF_SESSION);
+      localStorage.removeItem("donecorner.board");
+      window.location.assign("/");
+    } catch {
+      setResetBusy(false);
+      setAgent("error", "Could not reset the portal.");
+    }
   }
 
   const pinChart = useCallback(
-    async (chart: AgentChart, boardId?: string) => {
+    async (chart: AgentChartSpec, boardId?: string) => {
       if (mode !== "edit") {
         throw new Error("Switch to Edit before pinning a chart.");
       }
@@ -734,10 +805,9 @@ export function AppShell({ children }: Props) {
       canLoadSamplePack:
         agentStatus !== "running" && agentStatus !== "waiting_approval",
       setAgent,
-      lastCharts,
       pinChart,
     }),
-    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, loadSamplePack, agentStatus, setAgent, lastCharts, pinChart],
+    [mode, board, enterEdit, saveBoard, refreshBoard, requestPublish, loadSamplePack, agentStatus, setAgent, pinChart],
   );
 
   const routeLabel =
@@ -782,14 +852,21 @@ export function AppShell({ children }: Props) {
               <span>Northstar Group</span>
               <strong>{routeLabel}</strong>
             </div>
-            <ModeBar
-              mode={mode}
-              onChange={(next) => {
-                if (next === "edit") void enterEdit();
-                else setMode("view");
-              }}
-              canEdit
-            />
+            <div className="topbar-tools">
+              <ThemeToggle />
+              <PortalResetConfirm
+                busy={resetBusy}
+                onStart={() => void resetPortal()}
+              />
+              <ModeBar
+                mode={mode}
+                onChange={(next) => {
+                  if (next === "edit") void enterEdit();
+                  else setMode("view");
+                }}
+                canEdit
+              />
+            </div>
           </header>
           {mode === "edit" ? (
             <p className="edit-strip">
@@ -819,10 +896,13 @@ export function AppShell({ children }: Props) {
                   ? "approval"
                   : undefined
           }
+          busy={railBusy}
           disabled={queryDisabled}
           disabledReason={queryReason}
           canEditPrompt={mode === "edit"}
+          canPin={mode === "edit"}
           onSubmit={submitAgent}
+          onPinChart={pinChart}
           onApprove={() => void resolveRail("approved")}
           onDeny={() => void resolveRail("denied")}
         />

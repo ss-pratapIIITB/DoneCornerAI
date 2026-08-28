@@ -1,6 +1,7 @@
 import { jsonError } from "@/lib/api/http";
+import { coerceLakeQuery } from "@/lib/lake/coerce-query";
 import { queryLake, queryPnlTable } from "@/lib/lake/query";
-import { parseLakeGrain, type LakeQuery } from "@/lib/lake/types";
+import type { LakeQuery } from "@/lib/lake/types";
 
 export const runtime = "nodejs";
 
@@ -10,12 +11,9 @@ export async function POST(req: Request): Promise<Response> {
     if (body.view === "pnl") {
       return Response.json(await queryPnlTable(body.filters ?? {}));
     }
-    const rows = await queryLake({
-      metric: String(body.metric ?? "revenue"),
-      grain: parseLakeGrain(body.grain ?? "period"),
-      filters: body.filters ?? { scenario: "actual" },
-    });
-    return Response.json({ rows });
+    const query = coerceLakeQuery(body);
+    const rows = await queryLake(query);
+    return Response.json({ rows, query });
   } catch (err) {
     return jsonError(err);
   }

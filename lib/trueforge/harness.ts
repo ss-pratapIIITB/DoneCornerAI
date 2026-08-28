@@ -6,20 +6,49 @@ import {
   closePackSpec,
 } from "@/lib/trueforge/agent";
 
-export function donecornerMcpUrl(): string {
+export function donecornerMcpUrl(origin?: string | null): string {
   if (process.env.DONECORNER_MCP_URL) return process.env.DONECORNER_MCP_URL;
+  const trusted = trustedPortalOrigin(origin);
+  if (trusted) {
+    const host = canonicalHostname(trusted.hostname);
+    const mapped =
+      host === "localhost" || host === "::1" ? "127.0.0.1" : host;
+    const port = trusted.port ? `:${trusted.port}` : "";
+    return `${trusted.protocol}//${mapped}${port}/api/mcp`;
+  }
   const port = process.env.PORT ?? "3000";
   return `http://127.0.0.1:${port}/api/mcp`;
 }
 
-export async function ensureHarness(): Promise<void> {
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1"]);
+
+function canonicalHostname(hostname: string): string {
+  return hostname.toLowerCase().replace(/^\[|\]$/g, "");
+}
+
+function trustedPortalOrigin(origin?: string | null): URL | null {
+  if (!origin) return null;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    const host = canonicalHostname(parsed.hostname);
+    if (LOOPBACK.has(host)) return parsed;
+    const extra = process.env.DONECORNER_PUBLIC_HOST?.trim().toLowerCase();
+    if (extra && host === extra && parsed.protocol === "https:") return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureHarness(origin?: string | null): Promise<void> {
   const client = trueforge();
   await client.settings.mcpServers.createOrUpdate({
     manifest: {
       name: "donecorner",
       description: "Northstar close pack: cube, dashboards, sandbox ingest, publish",
       type: "remote",
-      url: donecornerMcpUrl(),
+      url: donecornerMcpUrl(origin),
     },
   });
 

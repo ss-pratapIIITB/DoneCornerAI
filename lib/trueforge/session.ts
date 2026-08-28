@@ -52,6 +52,7 @@ export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reas
 export async function resumeOrCreateSession(
   sessionId: string | null | undefined,
   userId: string,
+  origin?: string | null,
 ): Promise<{ id: string }> {
   const client = trueforge();
   const db = getDb();
@@ -59,6 +60,11 @@ export async function resumeOrCreateSession(
   if (sessionId && isAgentSessionOwner(db, sessionId, userId)) {
     try {
       const existing = await client.sessions.get(sessionId);
+      try {
+        await ensureHarness(origin);
+      } catch {
+        // Session is still usable; MCP re-register can wait for the next health check.
+      }
       return { id: existing.data.id };
     } catch (err) {
       const missing =
@@ -69,7 +75,7 @@ export async function resumeOrCreateSession(
 
   let created: { id: string };
   try {
-    await ensureHarness();
+    await ensureHarness(origin);
     const named = await client.sessions.create({
       agent: { name: CLOSE_PACK_AGENT },
     });

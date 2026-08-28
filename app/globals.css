@@ -451,6 +451,11 @@ button:hover:not(:disabled),
   border: 1px solid var(--danger);
 }
 
+.approval-actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .upload {
   display: inline-flex;
   flex-direction: column;

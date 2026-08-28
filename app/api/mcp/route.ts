@@ -3,6 +3,13 @@ import { handleMcpJsonRpc, type JsonRpcRequest } from "@/mcp/protocol";
 
 export const runtime = "nodejs";
 
+/** TrueForge sends Accept: application/json, text/event-stream. Prefer JSON-RPC JSON. */
+export function mcpWantsSse(accept: string | null): boolean {
+  const header = accept ?? "";
+  if (!header.includes("text/event-stream")) return false;
+  return !header.includes("application/json");
+}
+
 function sse(payload: unknown): Response {
   const data = `event: message\ndata: ${JSON.stringify(payload)}\n\n`;
   return new Response(data, {
@@ -13,12 +20,18 @@ function sse(payload: unknown): Response {
   });
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(req: Request): Promise<Response> {
+  if (mcpWantsSse(req.headers.get("accept"))) {
+    return new Response("Use POST JSON-RPC", {
+      status: 405,
+      headers: { allow: "POST" },
+    });
+  }
   return Response.json({ name: "donecorner", tools: "mcp" });
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const wantsSse = (req.headers.get("accept") ?? "").includes("text/event-stream");
+  const wantsSse = mcpWantsSse(req.headers.get("accept"));
   const body = (await req.json()) as JsonRpcRequest | JsonRpcRequest[];
   const db = getDb();
   migrate(db);

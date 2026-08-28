@@ -15,10 +15,11 @@ import { drillLake, drillLakeUp, prevLakeGrain } from "@/lib/lake/drill";
 type Props = {
   query: LakeQuery;
   rows: LakeRow[];
+  compact?: boolean;
   onQueryChange: (q: LakeQuery) => void;
 };
 
-export function LakeChart({ query, rows, onQueryChange }: Props) {
+export function LakeChart({ query, rows, compact = false, onQueryChange }: Props) {
   const canUp = prevLakeGrain(query.grain) != null;
   const ancestors = [
     ...(query.filters.period ?? []).map((value) => `period ${value}`),
@@ -41,7 +42,7 @@ export function LakeChart({ query, rows, onQueryChange }: Props) {
         <strong>/ by {query.grain}</strong>
       </nav>
       <div className="chart-frame">
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={compact ? 168 : 280}>
           <BarChart
             data={rows}
             onClick={(state) => {
@@ -84,19 +85,21 @@ export function LakeChart({ query, rows, onQueryChange }: Props) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <ul className="drill-keys">
-        {rows.map((row) => (
-          <li key={row.key}>
-            <button
-              type="button"
-              data-drill-key={row.key}
-              onClick={() => onQueryChange(drillLake(query, row.key))}
-            >
-              {row.label}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {compact ? null : (
+        <ul className="drill-keys">
+          {rows.map((row) => (
+            <li key={row.key}>
+              <button
+                type="button"
+                data-drill-key={row.key}
+                onClick={() => onQueryChange(drillLake(query, row.key))}
+              >
+                {row.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

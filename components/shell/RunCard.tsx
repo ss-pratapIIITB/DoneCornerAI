@@ -115,7 +115,13 @@ export function RunCard({
           </li>
         ) : null}
         {!visible.length && !system.length ? (
-          <li className="run-empty">Waiting for the first agent event…</li>
+          <li className="run-empty">
+            {run.status === "running" || run.status === "queued"
+              ? "Waiting for the first agent event…"
+              : run.status === "waiting_approval"
+                ? "Waiting for approval."
+                : "No tool calls this turn."}
+          </li>
         ) : null}
       </ol>
     </details>

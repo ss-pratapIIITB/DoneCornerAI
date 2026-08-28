@@ -1,8 +1,10 @@
 import type { RunEvent } from "@/lib/runs/types";
+import type { LakeRow } from "@/lib/lake/types";
 
 export type ReplayChart = {
   title: string;
   query: Record<string, unknown>;
+  rows?: LakeRow[];
 };
 
 export type ReplayApproval = {
@@ -33,13 +35,18 @@ function queryFromPayload(value: unknown): ReplayChart | null {
   const payload = value as {
     title?: unknown;
     query?: unknown;
+    rows?: unknown;
     chart?: { title?: unknown; query?: unknown };
   };
   const query = payload.query ?? payload.chart?.query;
   if (!query || typeof query !== "object") return null;
+  const rows = Array.isArray(payload.rows)
+    ? (payload.rows as LakeRow[])
+    : undefined;
   return {
     title: String(payload.chart?.title ?? payload.title ?? "Chart"),
     query: query as Record<string, unknown>,
+    rows,
   };
 }
 
@@ -117,6 +124,26 @@ export function pendingApprovalsFromRunEvents(
     }
   }
   return [...pending.values()];
+}
+
+export function pendingApprovalsForRequest(
+  pending: ReplayApproval[],
+  events: RunEvent[],
+): ReplayApproval[] {
+  const fromEvents = pendingApprovalsFromRunEvents(events);
+  const byId = new Map(fromEvents.map((item) => [item.toolCallId, item]));
+  const usable = pending
+    .filter((item) => item.toolCallId.trim())
+    .map((item) => {
+      const recovered = byId.get(item.toolCallId);
+      return {
+        ...item,
+        name: recovered?.name ?? item.name,
+        kind: recovered?.kind ?? item.kind,
+      };
+    });
+  if (usable.length) return usable;
+  return fromEvents.filter((item) => item.toolCallId.trim());
 }
 
 export function sessionRailState(

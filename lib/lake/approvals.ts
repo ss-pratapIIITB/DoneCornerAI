@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { unwrapGatedTool } from "@/lib/runs/gated-tool";
 import { getRun, listRunEvents } from "@/lib/runs/ledger";
 
 export type LakeLoadApproval = {
@@ -49,7 +50,11 @@ export function authorizeLakeLoadFromRunApproval(
         String(candidate.details.toolCallId ?? "") === input.toolCallId,
     );
   if (!event) throw new Error("Approval request not found");
-  if (String(event.details.name ?? "") !== "load_lake") return null;
+  const gated = unwrapGatedTool(
+    String(event.details.name ?? ""),
+    event.details.arguments,
+  );
+  if (gated.name !== "load_lake") return null;
 
   const now = new Date();
   const approval: LakeLoadApproval = {

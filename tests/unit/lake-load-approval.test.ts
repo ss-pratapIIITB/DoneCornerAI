@@ -70,4 +70,32 @@ describe("load_lake execution approval", () => {
       requireLakeLoadApproval(db, { runId: run.id, userId: "cfo" }).toolCallId,
     ).toBe("call-lake-1");
   });
+
+  it("binds load_lake when TrueForge wraps the pause as call_tool", () => {
+    const { db, run } = setup();
+    appendRunEvent(db, run.id, {
+      type: "approval.requested",
+      stage: "approval",
+      summary: "Approval required for call_tool",
+      details: {
+        name: "call_tool",
+        toolCallId: "call-wrap-1",
+        arguments: {
+          mcp_server: "donecorner",
+          tool_name: "load_lake",
+          input: { runId: run.id, userId: "cfo" },
+        },
+      },
+    });
+
+    authorizeLakeLoadFromRunApproval(db, {
+      runId: run.id,
+      userId: "cfo",
+      toolCallId: "call-wrap-1",
+      allow: true,
+    });
+    expect(
+      requireLakeLoadApproval(db, { runId: run.id, userId: "cfo" }).toolCallId,
+    ).toBe("call-wrap-1");
+  });
 });

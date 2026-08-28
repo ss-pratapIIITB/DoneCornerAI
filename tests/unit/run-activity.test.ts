@@ -94,4 +94,26 @@ describe("run activity grouping", () => {
     expect(activityHeadline(steps, "done")).toBe("Used exec");
     expect(steps.find((step) => step.name === "call_tool")?.system).toBe(true);
   });
+
+  it("does not pretend a finished text-only turn is still waiting for events", () => {
+    expect(activityHeadline([], "done")).toBe("Replied without tools");
+    expect(activityHeadline([], "running")).toBe("Waiting for the first agent event");
+  });
+
+  it("keeps waiting_approval as the headline even after system tool lookup", () => {
+    const steps = groupRunActivity([
+      event("tool.completed", "list_tools completed", {
+        name: "list_tools",
+        toolCallId: "t1",
+      }),
+      event("approval.requested", "Approval required for call_tool", {
+        name: "call_tool",
+        toolCallId: "t2",
+      }),
+    ]);
+    expect(activityHeadline(steps, "waiting_approval")).toBe(
+      "Waiting for approval",
+    );
+  });
 });
+

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { unwrapGatedTool } from "@/lib/runs/gated-tool";
 import { getArtifact } from "@/lib/artifacts/store";
 import { getMappingProposal } from "@/lib/mapping/proposals";
 import { getRun, listRunEvents } from "@/lib/runs/ledger";
@@ -44,20 +45,6 @@ function toApproval(row: ApprovalRow): MappingApproval {
   };
 }
 
-function record(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
-}
-
-function argumentsFrom(value: unknown): Record<string, unknown> {
-  if (typeof value !== "string") return record(value);
-  try {
-    return record(JSON.parse(value));
-  } catch {
-    return {};
-  }
-}
-
 export type MappingApprovalInput = {
   runId: string;
   userId: string;
@@ -89,9 +76,13 @@ export function authorizeMappingFromRunApproval(
         String(candidate.details.toolCallId ?? "") === input.toolCallId,
     );
   if (!event) throw new Error("Approval request not found");
-  if (String(event.details.name ?? "") !== "apply_mapping") return null;
+  const gated = unwrapGatedTool(
+    String(event.details.name ?? ""),
+    event.details.arguments,
+  );
+  if (gated.name !== "apply_mapping") return null;
 
-  const args = argumentsFrom(event.details.arguments);
+  const args = gated.arguments;
   const proposalId = String(args.proposalId ?? "");
   const proposalHash = String(args.proposalHash ?? "");
   const proposal = getMappingProposal(db, proposalId);

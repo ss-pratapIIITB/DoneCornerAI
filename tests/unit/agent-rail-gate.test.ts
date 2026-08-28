@@ -21,4 +21,20 @@ describe("AgentRail pending gates", () => {
     expect(html).toContain("Stop");
     expect(html).not.toContain("Approve publish");
   });
+
+  it("disables Approve while the decision is in flight", () => {
+    const html = renderToStaticMarkup(
+      createElement(AgentRail, {
+        status: "waiting_approval",
+        detail: "load_lake requires approval",
+        pendingActions: ["load_lake"],
+        pendingKind: "approval",
+        busy: true,
+        onApprove: () => undefined,
+        onDeny: () => undefined,
+      }),
+    );
+    expect(html).toContain("Approving");
+    expect(html).toMatch(/disabled/);
+  });
 });
