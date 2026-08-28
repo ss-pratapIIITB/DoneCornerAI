@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 4 — Hackathon evidence
 
-**Current step:** Prompt control merged ([PR 14](https://github.com/ss-pratapIIITB/DoneCornerAI/pull/14)). Remaining: README/DEMO/Field Report catch-up, Radio Traffic posts, star TrueForge.
+**Current step:** Session human-gate: resume `ask_user_question` / keep approval buttons when a later turn 422s.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 

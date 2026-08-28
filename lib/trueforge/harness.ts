@@ -23,13 +23,7 @@ export async function ensureHarness(): Promise<void> {
     },
   });
 
-  const spec = {
-    ...closePackSpec(closePackModel()),
-    config: {
-      sandbox: { enabled: true },
-      dynamicSubAgents: { enabled: true },
-    },
-  };
+  const spec = closePackSpec(closePackModel());
 
   try {
     await client.agents.create({ name: CLOSE_PACK_AGENT, manifest: spec });

@@ -232,3 +232,12 @@ export function listRuns(
         .all(input.userId, limit) as RunRow[]);
   return rows.map(toRun);
 }
+
+export function waitingRunForSession(
+  db: DatabaseSync,
+  input: { sessionId: string; userId: string },
+): AgentRun | undefined {
+  return listRuns(db, { userId: input.userId, sessionId: input.sessionId }).find(
+    (run) => run.status === "waiting_approval",
+  );
+}

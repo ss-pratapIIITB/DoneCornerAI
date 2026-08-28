@@ -1,7 +1,8 @@
 import { jsonError, userFromRequest } from "@/lib/api/http";
 import { getDb, migrate } from "@/lib/db/sqlite";
-import { createRun, listRunEvents, listRuns } from "@/lib/runs/ledger";
+import { createRun, listRunEvents, listRuns, waitingRunForSession } from "@/lib/runs/ledger";
 import type { RunKind } from "@/lib/runs/types";
+import { SessionBlockedError } from "@/lib/trueforge/gates";
 
 export const runtime = "nodejs";
 
@@ -30,12 +31,18 @@ export async function POST(req: Request): Promise<Response> {
         { status: 400 },
       );
     }
+    const user = userFromRequest(req);
     const db = getDb();
     migrate(db);
+    const waiting = waitingRunForSession(db, {
+      sessionId: body.sessionId,
+      userId: user.id,
+    });
+    if (waiting) throw new SessionBlockedError(waiting.id);
     const run = createRun(db, {
       sessionId: body.sessionId,
       kind: body.kind,
-      userId: userFromRequest(req).id,
+      userId: user.id,
     });
     return Response.json({ run }, { status: 201 });
   } catch (error) {

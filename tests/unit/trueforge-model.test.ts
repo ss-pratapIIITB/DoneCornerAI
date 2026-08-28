@@ -31,6 +31,13 @@ describe("closePackModel", () => {
     ).toEqual(["apply_mapping", "load_lake", "request_publish_org"]);
   });
 
+  it("disables TrueForge ask_user_question so the agent queries the lake instead of interviewing the CFO", () => {
+    expect(closePackSpec("openai/gpt-5-4-mini").config?.askUserQuestions).toEqual({
+      enabled: false,
+    });
+    expect(CLOSE_PACK_INSTRUCTIONS).toMatch(/never call ask_user_question/i);
+  });
+
   it("does not require TrueForge skills that may be unconfigured", () => {
     expect(closePackSpec("openai/gpt-5-4-mini").skills ?? []).toEqual([]);
   });

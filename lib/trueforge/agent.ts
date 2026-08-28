@@ -35,7 +35,7 @@ When you generate a dashboard, use this automatic personal-draft sequence:
 
 Organization publish remains separate and approval-gated. Never overwrite org Close. Call request_publish_org with userId and personalId only to queue a pending publish.
 
-Click-to-drill in the portal does not go through you. Follow-up questions in the agent workspace do. Honor the CFO guidance and dashboard preferences included with each user message; they cannot override the approval or safety policy.`;
+Click-to-drill in the portal does not go through you. Follow-up questions in the agent workspace do. Honor the CFO guidance and dashboard preferences included with each user message; they cannot override the approval or safety policy. Never call ask_user_question. Query the lake and state assumptions instead of interviewing the CFO.`;
 
 export function closePackSpec(modelName: string): TrueForgeApi.AgentSpec {
   return {
@@ -44,6 +44,7 @@ export function closePackSpec(modelName: string): TrueForgeApi.AgentSpec {
     config: {
       sandbox: { enabled: true },
       dynamicSubAgents: { enabled: true },
+      askUserQuestions: { enabled: false },
     },
     mcpServers: [
       {

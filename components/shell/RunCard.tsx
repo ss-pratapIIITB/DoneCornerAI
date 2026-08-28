@@ -1,33 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import {
+  activityHeadline,
+  groupRunActivity,
+  type ActivityStep,
+} from "@/lib/runs/activity";
 import type { AgentRun, RunEvent } from "@/lib/runs/types";
 
-const EVENT_LABELS: Partial<Record<RunEvent["type"], string>> = {
-  "run.started": "Run",
-  "user.message": "Input",
-  "message.completed": "Agent",
-  "tool.started": "Tool",
-  "tool.completed": "Tool",
-  "tool.failed": "Tool",
-  "sandbox.created": "Sandbox",
-  "subagent.started": "Subagent",
-  "subagent.completed": "Subagent",
-  "subagent.failed": "Subagent",
-  "approval.requested": "Approval",
-  "approval.resolved": "Approval",
-  "mcp.connected": "MCP",
-  "mcp.auth_required": "MCP",
-  "artifact.inspected": "File",
-  "mapping.proposed": "Mapping",
-  "mapping.applied": "Mapping",
-  "run.waiting_approval": "Run",
-  "run.completed": "Run",
-  "run.failed": "Run",
-  "run.cancelled": "Run",
-};
+function stepLabel(step: ActivityStep): string {
+  if (step.kind === "sandbox") return "Sandbox";
+  if (step.kind === "subagent") return "Subagent";
+  if (step.kind === "approval") return "Approval";
+  if (step.kind === "mcp") return "MCP";
+  return "Tool";
+}
 
-function eventDetails(event: RunEvent): Record<string, unknown> {
+function statusLabel(step: ActivityStep): string {
+  if (step.status === "failed") return "Failed";
+  if (step.status === "waiting") return "Waiting";
+  if (step.status === "running") return "Running";
+  return "Done";
+}
+
+function safeDetails(details: Record<string, unknown>): Record<string, unknown> {
   const safeKeys = new Set([
     "name",
     "toolCallId",
@@ -43,7 +39,27 @@ function eventDetails(event: RunEvent): Record<string, unknown> {
     "allow",
   ]);
   return Object.fromEntries(
-    Object.entries(event.details).filter(([key]) => safeKeys.has(key)),
+    Object.entries(details).filter(([key]) => safeKeys.has(key)),
+  );
+}
+
+function StepRow({ step }: { step: ActivityStep }) {
+  const details = safeDetails(step.details);
+  const hasDetails = Object.keys(details).length > 0;
+  return (
+    <li data-activity-status={step.status}>
+      <div className="run-event-line">
+        <span>{stepLabel(step)}</span>
+        <p>{step.summary}</p>
+        <span data-activity-status={step.status}>{statusLabel(step)}</span>
+      </div>
+      {hasDetails ? (
+        <details className="run-event-details">
+          <summary>Inspect details</summary>
+          <pre>{JSON.stringify(details, null, 2)}</pre>
+        </details>
+      ) : null}
+    </li>
   );
 }
 
@@ -54,53 +70,53 @@ export function RunCard({
   run: Pick<AgentRun, "id" | "kind" | "status" | "currentStage">;
   events: RunEvent[];
 }) {
-  const active = run.status === "running" || run.status === "waiting_approval";
-  const [open, setOpen] = useState(active);
-  const visible = events.filter(
-    (event) => event.type !== "message.delta" && event.type !== "user.message",
-  );
+  const waiting = run.status === "waiting_approval";
+  const steps = groupRunActivity(events);
+  const visible = steps.filter((step) => !step.system);
+  const system = steps.filter((step) => step.system);
+  const failed = steps.filter((step) => step.status === "failed").length;
+  const headline = activityHeadline(steps, run.status);
+  const [open, setOpen] = useState(waiting || failed > 0);
+
   return (
     <details
       className="run-card"
-      open={open}
+      open={open || waiting}
+      data-failed={failed > 0 ? "true" : "false"}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary>
-        <span>Agent activity</span>
-        <span className="run-stage">{run.currentStage.replaceAll("_", " ")}</span>
+        <span className="run-headline">{headline}</span>
+        {failed ? (
+          <span className="run-fail-count">
+            {failed} failed
+          </span>
+        ) : null}
         <span className="run-state" data-run-status={run.status}>
           {run.status.replaceAll("_", " ")}
         </span>
       </summary>
       <ol className="run-events">
-        {visible.length ? (
-          visible.map((event) => {
-            const details = eventDetails(event);
-            const hasDetails = Object.keys(details).length > 0;
-            return (
-              <li key={event.id} data-event-type={event.type}>
-                <div className="run-event-line">
-                  <span>{EVENT_LABELS[event.type] ?? "Agent"}</span>
-                  <p>{event.summary}</p>
-                  <time dateTime={event.createdAt}>
-                    {new Date(event.createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </time>
-                </div>
-                {hasDetails ? (
-                  <details className="run-event-details">
-                    <summary>Inspect details</summary>
-                    <pre>{JSON.stringify(details, null, 2)}</pre>
-                  </details>
-                ) : null}
-              </li>
-            );
-          })
-        ) : (
+        {visible.map((step) => (
+          <StepRow key={step.key} step={step} />
+        ))}
+        {system.length ? (
+          <li className="run-system-calls">
+            <details>
+              <summary>
+                {system.length} system {system.length === 1 ? "call" : "calls"}
+              </summary>
+              <ol className="run-events">
+                {system.map((step) => (
+                  <StepRow key={step.key} step={step} />
+                ))}
+              </ol>
+            </details>
+          </li>
+        ) : null}
+        {!visible.length && !system.length ? (
           <li className="run-empty">Waiting for the first agent event…</li>
-        )}
+        ) : null}
       </ol>
     </details>
   );
