@@ -6,6 +6,8 @@ import { POST } from "@/app/api/portal/reset/route";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
   ensureOrgClose,
+  getDashboard,
+  replaceOrgClose,
   savePersonalDashboard,
 } from "@/lib/dashboards/store";
 import { createRun } from "@/lib/runs/ledger";
@@ -72,6 +74,42 @@ describe("portal reset", () => {
     expect(result.truncatedLake).toBe(false);
   });
 
+  it("does not wipe another user's runs or the org Close dashboard", () => {
+    const db = getDb();
+    bindAgentSession(db, "sess-cfo", "cfo");
+    bindAgentSession(db, "sess-fpna", "fpna");
+    createRun(db, { sessionId: "sess-cfo", userId: "cfo", kind: "ask" });
+    createRun(db, { sessionId: "sess-fpna", userId: "fpna", kind: "ask" });
+    replaceOrgClose(db, {
+      id: "org-close",
+      name: "Northstar Close",
+      owner: "org",
+      forkedFrom: null,
+      widgets: [
+        {
+          id: "keep-me",
+          type: "bar",
+          title: "published",
+          query: {
+            metric: "revenue",
+            grain: "period",
+            filters: { scenario: "actual" },
+          },
+          note: "",
+        },
+      ],
+    });
+
+    const result = resetPortalState(db, "cfo");
+    expect(result.cleared).not.toContain("org_close_widgets");
+    expect(
+      db
+        .prepare("SELECT COUNT(*) AS n FROM agent_runs WHERE user_id = ?")
+        .get("fpna") as { n: number },
+    ).toEqual({ n: 1 });
+    expect(getDashboard(db, "org-close")?.widgets[0]?.id).toBe("keep-me");
+  });
+
   it("requires confirm from an editor", async () => {
     const viewer = await POST(
       new Request("http://localhost/api/portal/reset", {
@@ -92,6 +130,18 @@ describe("portal reset", () => {
         body: JSON.stringify({}),
       }),
     );
-    expect(missing.status).toBe(400);
+    expect(missing.status).toBe(403);
+
+    const editor = await POST(
+      new Request("http://localhost/api/portal/reset", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-demo-user": "cfo",
+        },
+        body: JSON.stringify({ confirm: true }),
+      }),
+    );
+    expect(editor.status).toBe(200);
   });
 });

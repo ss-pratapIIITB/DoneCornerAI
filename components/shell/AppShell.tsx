@@ -740,7 +740,10 @@ export function AppShell({ children }: Props) {
     try {
       const res = await fetch("/api/portal/reset", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-demo-user": "cfo",
+        },
         body: JSON.stringify({ confirm: true }),
       });
       if (!res.ok) throw new Error("Could not reset the portal.");

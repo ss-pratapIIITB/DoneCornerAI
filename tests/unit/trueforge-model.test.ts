@@ -107,4 +107,12 @@ describe("donecornerMcpUrl", () => {
       "http://127.0.0.1:3001/api/mcp",
     );
   });
+
+  it("ignores an untrusted request origin so MCP registration cannot be poisoned", () => {
+    delete process.env.DONECORNER_MCP_URL;
+    process.env.PORT = "3000";
+    expect(donecornerMcpUrl("https://evil.example/api/session")).toBe(
+      "http://127.0.0.1:3000/api/mcp",
+    );
+  });
 });

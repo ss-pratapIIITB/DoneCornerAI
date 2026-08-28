@@ -1,4 +1,4 @@
-import { fetchPublicUrl } from "@/lib/web/fetch-public";
+import { fetchPublicJson } from "@/lib/web/fetch-public";
 
 type TickerRow = { cik: string; ticker: string; name: string };
 
@@ -40,11 +40,7 @@ async function readJson(
   url: string,
   fetchFn: typeof fetch,
 ): Promise<unknown> {
-  const page = await fetchPublicUrl(url, fetchFn);
-  if (page.status >= 400) {
-    throw new Error(`Public fetch failed ${page.status} for ${url}`);
-  }
-  return JSON.parse(page.text) as unknown;
+  return fetchPublicJson(url, fetchFn);
 }
 
 async function loadTickers(fetchFn: typeof fetch): Promise<TickerRow[]> {

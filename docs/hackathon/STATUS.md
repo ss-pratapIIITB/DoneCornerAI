@@ -101,6 +101,8 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-28 | Theme from cookie, not a layout `<script>` | React 19 never executes scripts rendered in components |
 | 2026-08-28 | Agent transcript auto-scrolls smoothly unless the CFO scrolled up | Chat should follow the latest turn without fighting a reader |
 | 2026-08-28 | `lookup_public_company` / `fetch_public_url` MCP on Wikipedia + SEC allowlist | Real-company comparables without open internet/SSRF |
+| 2026-08-28 | Public fetch follows redirects only onto the allowlist; JSON uses a larger cap | Qodo High on PR 17: 24k truncation broke EDGAR; auto-follow was SSRF |
+| 2026-08-28 | Portal Reset is scoped to the editor and does not empty org Close | Qodo High: unscoped deletes and org-close wipe |
 
 ## Open questions
 

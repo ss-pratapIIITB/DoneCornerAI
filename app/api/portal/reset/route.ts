@@ -7,6 +7,10 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request): Promise<Response> {
   try {
+    const header = req.headers.get("x-demo-user");
+    if (header !== "cfo" && header !== "fpna") {
+      throw new ForbiddenError("Sign in as a finance editor to reset the portal.");
+    }
     const user = userFromRequest(req);
     if (!user.canEdit) {
       throw new ForbiddenError("Only finance editors can reset the portal.");

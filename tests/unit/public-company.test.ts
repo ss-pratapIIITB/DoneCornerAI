@@ -21,6 +21,79 @@ describe("public web MCP helpers", () => {
     );
   });
 
+  it("does not follow redirects off the public allowlist", async () => {
+    const seen: string[] = [];
+    const fetchFn: typeof fetch = async (input) => {
+      const url = String(input);
+      seen.push(url);
+      if (url.includes("en.wikipedia.org")) {
+        return new Response(null, {
+          status: 302,
+          headers: { location: "https://evil.example/steal" },
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    };
+    await expect(
+      fetchPublicUrl("https://en.wikipedia.org/wiki/Salesforce", fetchFn),
+    ).rejects.toThrow(/allowlist/i);
+    expect(seen).toEqual(["https://en.wikipedia.org/wiki/Salesforce"]);
+  });
+
+  it("parses SEC JSON larger than the HTML text cap", async () => {
+    const tickers = {
+      "0": { cik_str: 1108524, ticker: "CRM", title: "Salesforce, Inc." },
+      pad: "x".repeat(30_000),
+    };
+    const fetchFn: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("opensearch")) {
+        return new Response(
+          JSON.stringify(["Salesforce", ["Salesforce"], [""], ["https://en.wikipedia.org/wiki/Salesforce"]]),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("page/summary")) {
+        return new Response(
+          JSON.stringify({
+            title: "Salesforce",
+            extract: "Salesforce is an American cloud software company.",
+            content_urls: { desktop: { page: "https://en.wikipedia.org/wiki/Salesforce" } },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("company_tickers")) {
+        return new Response(JSON.stringify(tickers), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("companyfacts")) {
+        return new Response(
+          JSON.stringify({
+            facts: {
+              "us-gaap": {
+                Revenues: {
+                  units: {
+                    USD: [
+                      { fy: 2024, fp: "FY", form: "10-K", end: "2024-01-31", val: 34_857_000_000 },
+                    ],
+                  },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    };
+    const result = await lookupPublicCompany("CRM", fetchFn);
+    expect(result.sec?.ticker).toBe("CRM");
+    expect(result.sec?.revenueUsd).toBe(34_857_000_000);
+  });
+
   it("looks up a public company from Wikipedia and SEC tickers", async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = String(input);
