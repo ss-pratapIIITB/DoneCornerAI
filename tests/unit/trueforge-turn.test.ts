@@ -27,7 +27,54 @@ describe("summarizeTurnEvents", () => {
     expect(summary.status).toBe("waiting_approval");
     expect(summary.output).toContain("overwrite");
     expect(summary.pendingApprovals).toEqual([
-      { threadId: "main", toolCallId: "call_1", name: "request_publish_org" },
+      {
+        threadId: "main",
+        toolCallId: "call_1",
+        name: "request_publish_org",
+        kind: "approval",
+      },
+    ]);
+  });
+
+  it("treats ask_user_question pauses as waiting gates with a resumable call id", () => {
+    const summary = summarizeTurnEvents([
+      {
+        type: "model.message",
+        toolCalls: [
+          {
+            id: "call_q",
+            function: { name: "ask_user_question" },
+          },
+        ],
+      },
+      {
+        type: "tool.response_required",
+        threadId: "main",
+        toolCalls: [{ id: "call_q" }],
+      },
+      {
+        type: "turn.done",
+        state: {
+          status: "done",
+          output: { content: "Need a filter before querying." },
+          required_actions: [
+            {
+              type: "tool.response_required",
+              thread_id: "main",
+              tool_calls: [{ id: "call_q" }],
+            },
+          ],
+        },
+      },
+    ]);
+    expect(summary.status).toBe("waiting_approval");
+    expect(summary.pendingApprovals).toEqual([
+      {
+        threadId: "main",
+        toolCallId: "call_q",
+        name: "ask_user_question",
+        kind: "question",
+      },
     ]);
   });
 

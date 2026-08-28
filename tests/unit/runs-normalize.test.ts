@@ -118,4 +118,152 @@ describe("TrueForge run event normalization", () => {
       summary: "Model provider timed out",
     });
   });
+
+  it("ignores incomplete streamed tool-call chunks until a named call id exists", () => {
+    const context = createNormalizationContext();
+    const first = normalizeTrueForgeEvent(
+      {
+        type: "model.message.delta",
+        threadId: "main",
+        toolCalls: [{ id: "", function: { name: "", arguments: "{" } }],
+      },
+      context,
+    );
+    expect(first.filter((event) => event.type === "tool.started")).toEqual([]);
+
+    const nameless = normalizeTrueForgeEvent(
+      {
+        type: "model.message.delta",
+        threadId: "main",
+        toolCalls: [{ id: "call-stream", function: { name: "", arguments: "{" } }],
+      },
+      context,
+    );
+    expect(nameless.filter((event) => event.type === "tool.started")).toEqual([]);
+
+    const named = normalizeTrueForgeEvent(
+      {
+        type: "model.message.delta",
+        threadId: "main",
+        toolCalls: [
+          {
+            id: "call-stream",
+            function: { name: "query_lake", arguments: "{}" },
+          },
+        ],
+      },
+      context,
+    );
+    expect(named).toEqual([
+      expect.objectContaining({
+        type: "tool.started",
+        summary: "Calling query_lake",
+        details: expect.objectContaining({ toolCallId: "call-stream" }),
+      }),
+    ]);
+
+    const repeat = normalizeTrueForgeEvent(
+      {
+        type: "model.message.delta",
+        threadId: "main",
+        toolCalls: [
+          {
+            id: "call-stream",
+            function: { name: "query_lake", arguments: "{}" },
+          },
+        ],
+      },
+      context,
+    );
+    expect(repeat.filter((event) => event.type === "tool.started")).toEqual([]);
+  });
+
+  it("marks MCP isError tool responses as failures", () => {
+    const context = createNormalizationContext();
+    normalizeTrueForgeEvent(
+      {
+        type: "model.message",
+        toolCalls: [
+          {
+            id: "call-err",
+            function: { name: "query_sql", arguments: "{}" },
+          },
+        ],
+      },
+      context,
+    );
+    const failed = normalizeTrueForgeEvent(
+      {
+        type: "tool.response",
+        toolCallId: "call-err",
+        content: JSON.stringify({
+          content: [{ type: "text", text: "relation facts does not exist" }],
+          isError: true,
+        }),
+      },
+      context,
+    );
+    expect(failed[0]).toMatchObject({
+      type: "tool.failed",
+      summary: "query_sql failed",
+      details: { name: "query_sql", toolCallId: "call-err" },
+    });
+  });
+
+  it("marks object-shaped MCP error payloads as failures", () => {
+    const context = createNormalizationContext();
+    normalizeTrueForgeEvent(
+      {
+        type: "model.message",
+        toolCalls: [{ id: "call-obj", function: { name: "query_sql" } }],
+      },
+      context,
+    );
+    const failed = normalizeTrueForgeEvent(
+      {
+        type: "tool.response",
+        toolCallId: "call-obj",
+        content: {
+          content: [{ type: "text", text: "relation facts does not exist" }],
+          isError: true,
+        },
+      },
+      context,
+    );
+    expect(failed[0]?.type).toBe("tool.failed");
+  });
+
+  it("keeps tool.response_required call ids so the rail can resume the question", () => {
+    const context = createNormalizationContext();
+    normalizeTrueForgeEvent(
+      {
+        type: "model.message",
+        toolCalls: [
+          {
+            id: "call-q",
+            function: { name: "ask_user_question" },
+          },
+        ],
+      },
+      context,
+    );
+    expect(
+      normalizeTrueForgeEvent(
+        {
+          type: "tool.response_required",
+          threadId: "main",
+          toolCalls: [{ id: "call-q", sourceEventId: "msg-1" }],
+        },
+        context,
+      )[0],
+    ).toMatchObject({
+      type: "approval.requested",
+      summary: "ask_user_question needs input",
+      details: {
+        toolCallId: "call-q",
+        name: "ask_user_question",
+        responseRequired: true,
+      },
+    });
+  });
 });

@@ -18,7 +18,7 @@ import {
 import { ModeBar } from "@/components/shell/ModeBar";
 import type { Dashboard } from "@/lib/dashboards/widgets";
 import type { LakeQuery } from "@/lib/lake/types";
-import { chartsFromRunEvents } from "@/lib/runs/replay";
+import { asReplayApprovals, chartsFromRunEvents, sessionRailState, type ReplayApproval } from "@/lib/runs/replay";
 import type { AgentRun, RunEvent } from "@/lib/runs/types";
 
 type Mode = "view" | "edit";
@@ -119,27 +119,6 @@ function chartsForBoard(events: RunEvent[]): AgentChart[] {
   }));
 }
 
-function unresolvedApprovals(events: RunEvent[]) {
-  const pending = new Map<
-    string,
-    { threadId: string; toolCallId: string; name?: string }
-  >();
-  for (const event of events) {
-    const toolCallId = String(event.details.toolCallId ?? "");
-    if (!toolCallId) continue;
-    if (event.type === "approval.requested") {
-      pending.set(toolCallId, {
-        threadId: String(event.details.threadId ?? "main"),
-        toolCallId,
-        name: String(event.details.name ?? "Sensitive tool action"),
-      });
-    } else if (event.type === "approval.resolved") {
-      pending.delete(toolCallId);
-    }
-  }
-  return [...pending.values()];
-}
-
 function uiRunStatus(status: AgentRun["status"]): AgentStatus {
   if (status === "queued") return "running";
   if (status === "cancelled") return "error";
@@ -183,9 +162,7 @@ export function AppShell({ children }: Props) {
   );
   const [tfSession, setTfSession] = useState<string | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
-  const [pendingTf, setPendingTf] = useState<
-    { threadId: string; toolCallId: string; name?: string }[]
-  >([]);
+  const [pendingTf, setPendingTf] = useState<ReplayApproval[]>([]);
   const [lastCharts, setLastCharts] = useState<AgentChart[]>([]);
   const [turns, setTurns] = useState<AgentTurn[]>([]);
 
@@ -211,7 +188,13 @@ export function AppShell({ children }: Props) {
       );
       setPendingTf(
         snapshot.run.status === "waiting_approval"
-          ? unresolvedApprovals(snapshot.events)
+          ? sessionRailState([
+              {
+                id: snapshot.run.id,
+                status: snapshot.run.status,
+                events: snapshot.events,
+              },
+            ]).pending
           : [],
       );
       const status = uiRunStatus(snapshot.run.status);
@@ -258,16 +241,24 @@ export function AppShell({ children }: Props) {
     );
     const latest = runs.at(-1);
     if (!latest) return;
-    setActiveRunId(latest.id);
-    const pending = unresolvedApprovals(latest.events);
-    setPendingTf(latest.status === "waiting_approval" ? pending : []);
-    const status = uiRunStatus(latest.status);
-    setAgentStatus(status);
-    const charts = chartsForBoard(latest.events);
+    const rail = sessionRailState(runs);
+    setActiveRunId(rail.activeRunId);
+    setPendingTf(rail.pending);
+    setAgentStatus(rail.status);
+    const active =
+      runs.find((run) => run.id === rail.activeRunId) ?? latest;
+    const charts = chartsForBoard(active.events);
     if (charts.length) setLastCharts(charts);
+    const waitingQuestion = rail.pending.some((item) => item.kind === "question");
     setAgentDetail(
-      answerFromEvents(latest.events) ||
-        (status === "running" ? "Resuming live agent activity…" : "Ready."),
+      answerFromEvents(active.events) ||
+        (rail.status === "running"
+          ? "Resuming live agent activity…"
+          : rail.status === "waiting_approval"
+            ? waitingQuestion
+              ? "The agent asked a question. Continue to use the lake, or stop."
+              : "Waiting for approval."
+            : "Ready."),
     );
   }, []);
 
@@ -454,6 +445,18 @@ export function AppShell({ children }: Props) {
       body: JSON.stringify({ sessionId: session.id, kind }),
     });
     if (!started.ok) {
+      const body = (await started.json().catch(() => ({}))) as {
+        error?: string;
+        waitingRunId?: string;
+      };
+      if (started.status === 409) {
+        await hydrateRuns(session.id);
+        const message =
+          body.error ??
+          "Resolve the pending agent question or approval before starting another turn.";
+        setAgent("waiting_approval", message);
+        throw new Error(message);
+      }
       await discardArtifacts(artifacts);
       throw new Error("Could not create an observable agent run.");
     }
@@ -498,6 +501,17 @@ export function AppShell({ children }: Props) {
       throw error;
     }
     if (!turn.ok) {
+      const body = (await turn.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (turn.status === 409) {
+        await hydrateRuns(session.id);
+        const message =
+          body.error ??
+          "Resolve the pending agent question or approval before starting another turn.";
+        setAgent("waiting_approval", message);
+        throw new Error(message);
+      }
       await markRunFailed(run.id, "Agent turn failed before completion.");
       setAgent("error", "The query turn failed.");
       throw new Error("The agent turn failed.");
@@ -511,10 +525,11 @@ export function AppShell({ children }: Props) {
         threadId: string;
         toolCallId: string;
         name?: string;
+        kind?: "approval" | "question";
       }[];
       charts?: { title: string; query: Record<string, unknown> }[];
     };
-    setPendingTf(result.pendingApprovals ?? []);
+    setPendingTf(asReplayApprovals(result.pendingApprovals));
     const answer = result.output?.trim() || "Turn finished.";
     setTurns((current) =>
       current.map((item) =>
@@ -598,13 +613,14 @@ export function AppShell({ children }: Props) {
           threadId: string;
           toolCallId: string;
           name?: string;
+          kind?: "approval" | "question";
         }[];
         runId?: string;
         events?: RunEvent[];
         charts?: { title: string; query: Record<string, unknown> }[];
         error?: string;
       };
-      setPendingTf(summary.pendingApprovals ?? []);
+      setPendingTf(asReplayApprovals(summary.pendingApprovals));
       if (summary.runId && summary.events) {
         setTurns((current) =>
           current.map((turn) =>
@@ -731,7 +747,7 @@ export function AppShell({ children }: Props) {
     <PortalContext.Provider value={value}>
       <div className="app-shell" data-mode={mode}>
         <nav className="rail" aria-label="Primary">
-          <p className="brand" aria-label="DoneCornerAI">
+          <p className="brand" aria-label="DoneCornerAI" suppressHydrationWarning>
             DC
           </p>
           <Link href="/" className={path === "/" ? "is-on" : ""} title="Close">
@@ -788,8 +804,21 @@ export function AppShell({ children }: Props) {
           turns={turns}
           pendingActions={[
             ...(publishId ? ["Publish board"] : []),
-            ...pendingTf.map((action) => action.name ?? "Sensitive tool action"),
+            ...pendingTf.map((action) =>
+              action.kind === "question"
+                ? action.name ?? "Agent question"
+                : action.name ?? "Sensitive tool action",
+            ),
           ]}
+          pendingKind={
+            publishId
+              ? "publish"
+              : pendingTf.some((action) => action.kind === "question")
+                ? "question"
+                : pendingTf.length
+                  ? "approval"
+                  : undefined
+          }
           disabled={queryDisabled}
           disabledReason={queryReason}
           canEditPrompt={mode === "edit"}

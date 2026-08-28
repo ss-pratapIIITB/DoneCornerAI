@@ -90,6 +90,22 @@ function toolArguments(call: Record<string, unknown>): unknown {
   return parsedJson(fn.arguments ?? call.arguments ?? {});
 }
 
+function responsePayload(raw: Record<string, unknown>): unknown {
+  const content = raw.content ?? raw.text ?? raw.result;
+  if (content && typeof content === "object" && !Array.isArray(content)) {
+    return content;
+  }
+  return parsedJson(text(content));
+}
+
+function toolResponseFailed(raw: Record<string, unknown>, payload: unknown): boolean {
+  if (raw.isError === true || raw.is_error === true) return true;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const body = payload as Record<string, unknown>;
+  if (body.isError === true || body.is_error === true) return true;
+  return typeof body.error === "string" && body.error.trim().length > 0;
+}
+
 export function normalizeTrueForgeEvent(
   input: unknown,
   context: NormalizationContext,
@@ -124,6 +140,8 @@ export function normalizeTrueForgeEvent(
     for (const call of toolCalls(raw.toolCalls ?? raw.tool_calls)) {
       const id = String(call.id ?? call.toolCallId ?? call.tool_call_id ?? "");
       const name = toolName(call);
+      if (!id || !name || name === "tool") continue;
+      if (context.tools.has(id)) continue;
       const info = record(call.toolInfo ?? call.tool_info);
       const state: ToolState = {
         name,
@@ -131,7 +149,7 @@ export function normalizeTrueForgeEvent(
         threadId,
         source: String(info.type ?? info.serverName ?? info.server_name ?? "tool"),
       };
-      if (id) context.tools.set(id, state);
+      context.tools.set(id, state);
       events.push(
         event("tool.started", stageForTool(name), `Calling ${name}`, {
           toolCallId: id,
@@ -145,31 +163,53 @@ export function normalizeTrueForgeEvent(
     return events;
   }
 
-  if (type === "tool.response") {
+  if (type === "tool.response" || type === "tool.result") {
     const toolCallId = String(raw.toolCallId ?? raw.tool_call_id ?? "");
     const known = context.tools.get(toolCallId);
     const name = known?.name ?? "tool";
+    const payload = responsePayload(raw);
+    const failed = toolResponseFailed(raw, payload);
     return [
-      event("tool.completed", stageForTool(name), `${name} completed`, {
-        toolCallId,
-        name,
-        threadId,
-        response: parsedJson(text(raw.content ?? raw.text)),
-      }),
+      event(
+        failed ? "tool.failed" : "tool.completed",
+        stageForTool(name),
+        failed ? `${name} failed` : `${name} completed`,
+        {
+          toolCallId,
+          name,
+          threadId,
+          response: payload,
+        },
+      ),
     ];
   }
 
   if (type === "tool.response_required") {
-    const toolCallId = String(raw.toolCallId ?? raw.tool_call_id ?? "");
-    const name = context.tools.get(toolCallId)?.name ?? "tool";
-    return [
-      event("approval.requested", stageForTool(name), `${name} needs input`, {
-        toolCallId,
-        name,
-        threadId,
-        responseRequired: true,
-      }),
-    ];
+    const calls = toolCalls(raw.toolCalls ?? raw.tool_calls);
+    const fallbackId = String(raw.toolCallId ?? raw.tool_call_id ?? "");
+    const ids = calls.length
+      ? calls
+      : fallbackId
+        ? [{ id: fallbackId } as Record<string, unknown>]
+        : [];
+    return ids.map((call) => {
+      const toolCallId = String(
+        call.toolCallId ?? call.tool_call_id ?? call.id ?? "",
+      );
+      const known = context.tools.get(toolCallId);
+      const name = known?.name ?? toolName(call);
+      return event(
+        "approval.requested",
+        stageForTool(name),
+        `${name} needs input`,
+        {
+          toolCallId,
+          name,
+          threadId,
+          responseRequired: true,
+        },
+      );
+    });
   }
 
   if (type === "tool.approval_required") {

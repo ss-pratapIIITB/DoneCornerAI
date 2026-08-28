@@ -125,9 +125,10 @@ export function updateRun(
   const current = getRun(db, runId);
   if (!current) throw new Error("Run not found");
   if (
-    current.status === "done" ||
-    current.status === "error" ||
-    current.status === "cancelled"
+    (current.status === "done" ||
+      current.status === "error" ||
+      current.status === "cancelled") &&
+    !(current.status === "error" && patch.status === "waiting_approval")
   ) {
     return current;
   }
@@ -231,4 +232,13 @@ export function listRuns(
         )
         .all(input.userId, limit) as RunRow[]);
   return rows.map(toRun);
+}
+
+export function waitingRunForSession(
+  db: DatabaseSync,
+  input: { sessionId: string; userId: string },
+): AgentRun | undefined {
+  return listRuns(db, { userId: input.userId, sessionId: input.sessionId }).find(
+    (run) => run.status === "waiting_approval",
+  );
 }

@@ -14,6 +14,7 @@ type Props = {
   detail: string;
   turns?: AgentTurn[];
   pendingActions?: string[];
+  pendingKind?: "approval" | "question" | "publish";
   disabled?: boolean;
   disabledReason?: string;
   canEditPrompt?: boolean;
@@ -44,6 +45,7 @@ export function AgentRail({
   detail,
   turns,
   pendingActions,
+  pendingKind,
   disabled,
   disabledReason,
   canEditPrompt,
@@ -54,10 +56,14 @@ export function AgentRail({
   const [expanded, setExpanded] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
   const isApproval = status === "waiting_approval";
+  const isQuestion = pendingKind === "question";
   const actionLabel = pendingActions?.length
     ? pendingActions.join(", ")
-    : "Sensitive action";
+    : isQuestion
+      ? "Agent question"
+      : "Sensitive action";
   const isPublish =
+    pendingKind === "publish" ||
     pendingActions?.some((action) => action.toLowerCase().includes("publish")) ||
     detail.toLowerCase().includes("publish");
 
@@ -125,14 +131,23 @@ export function AgentRail({
       {isApproval ? (
         <div className="approval-actions">
           <p>
-            <strong>{actionLabel}</strong> requires your approval. Review the agent
-            detail above before continuing.
+            {isQuestion ? (
+              <>
+                <strong>{actionLabel}</strong> paused the session. Continue to
+                make the agent use the lake, or stop this turn.
+              </>
+            ) : (
+              <>
+                <strong>{actionLabel}</strong> requires your approval. Review the
+                agent detail above before continuing.
+              </>
+            )}
           </p>
           <button type="button" onClick={onApprove}>
-            {isPublish ? "Approve publish" : "Approve action"}
+            {isQuestion ? "Continue" : isPublish ? "Approve publish" : "Approve action"}
           </button>
           <button type="button" className="deny" onClick={onDeny}>
-            {isPublish ? "Deny publish" : "Deny action"}
+            {isQuestion ? "Stop" : isPublish ? "Deny publish" : "Deny action"}
           </button>
         </div>
       ) : null}

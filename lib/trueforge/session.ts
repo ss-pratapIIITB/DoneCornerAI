@@ -7,6 +7,7 @@ import {
   getRun,
   listRunEvents,
   updateRun,
+  waitingRunForSession,
 } from "@/lib/runs/ledger";
 import {
   createNormalizationContext,
@@ -26,6 +27,7 @@ import {
 import type { RunEvent, RunKind, RunStatus } from "@/lib/runs/types";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
 import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
+import { SessionBlockedError, turnInputsForPendingGates } from "@/lib/trueforge/gates";
 import { ensureHarness } from "@/lib/trueforge/harness";
 
 export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reason: string }> {
@@ -89,6 +91,7 @@ export type TurnSummary = {
     threadId: string;
     toolCallId: string;
     name?: string;
+    kind?: "approval" | "question";
   }[];
   charts: { title: string; query: Record<string, unknown> }[];
   runId?: string;
@@ -135,6 +138,23 @@ function chartFromPayload(
   };
 }
 
+function humanGateKind(type: string): "approval" | "question" | null {
+  if (type.includes("response_required")) return "question";
+  if (type.includes("approval")) return "approval";
+  return null;
+}
+
+function pushPending(
+  pendingApprovals: TurnSummary["pendingApprovals"],
+  item: TurnSummary["pendingApprovals"][number],
+) {
+  if (!item.toolCallId) return;
+  if (pendingApprovals.some((existing) => existing.toolCallId === item.toolCallId)) {
+    return;
+  }
+  pendingApprovals.push(item);
+}
+
 export function summarizeTurnEvents(events: unknown[]): TurnSummary {
   let output = "";
   let status: TurnSummary["status"] = "done";
@@ -166,8 +186,9 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
       const chart = chartFromPayload(outputText(event.content ?? event.text));
       if (chart) charts.push(chart);
     }
-    if (type === "tool.approval_required") {
+    if (type === "tool.approval_required" || type === "tool.response_required") {
       status = "waiting_approval";
+      const kind = humanGateKind(type) ?? "approval";
       const calls = (event.toolCalls ?? event.tool_calls ?? []) as {
         id?: string;
         toolCallId?: string;
@@ -175,12 +196,15 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
       }[];
       const threadId = String(event.threadId ?? event.thread_id ?? "main");
       for (const call of calls) {
-        pendingApprovals.push({
+        const toolCallId = String(call.toolCallId ?? call.id ?? "");
+        pushPending(pendingApprovals, {
           threadId,
-          toolCallId: String(call.toolCallId ?? call.id ?? ""),
+          toolCallId,
           name:
             call.toolInfo?.name ??
-            toolNames.get(String(call.toolCallId ?? call.id ?? "")),
+            toolNames.get(toolCallId) ??
+            (kind === "question" ? "ask_user_question" : undefined),
+          kind,
         });
       }
     }
@@ -215,22 +239,23 @@ export function summarizeTurnEvents(events: unknown[]): TurnSummary {
         thread_id?: string;
         tool_calls?: { id?: string }[];
       }[];
-      const needsApproval = actions.some((a) =>
-        String(a.type ?? "").includes("approval"),
+      const needsPerson = actions.some((action) =>
+        Boolean(humanGateKind(String(action.type ?? ""))),
       );
-      if (needsApproval) {
+      if (needsPerson) {
         status = "waiting_approval";
         for (const action of actions) {
-          if (!String(action.type ?? "").includes("approval")) continue;
+          const kind = humanGateKind(String(action.type ?? ""));
+          if (!kind) continue;
           const threadId = String(action.threadId ?? action.thread_id ?? "main");
           for (const call of action.tool_calls ?? []) {
-            if (!pendingApprovals.some((p) => p.toolCallId === String(call.id ?? ""))) {
-              pendingApprovals.push({
-                threadId,
-                toolCallId: String(call.id ?? ""),
-                name: toolNames.get(String(call.id ?? "")),
-              });
-            }
+            const toolCallId = String(call.id ?? "");
+            pushPending(pendingApprovals, {
+              threadId,
+              toolCallId,
+              name: toolNames.get(toolCallId),
+              kind,
+            });
           }
         }
       } else if (state?.status === "error" || state?.status === "cancelled") {
@@ -258,6 +283,13 @@ export async function runUserTurn(
   migrate(db);
   assertAgentSessionOwner(db, sessionId, options.userId);
   const runId = ensureRun(db, sessionId, options);
+  const waiting = waitingRunForSession(db, {
+    sessionId,
+    userId: options.userId,
+  });
+  if (waiting && waiting.id !== runId) {
+    throw new SessionBlockedError(waiting.id);
+  }
   const userMessage = options.displayMessage ?? message;
   const { guidance, assembled } = promptForTurn(db, options.userId, {
     runContext: options.displayMessage ? message : undefined,
@@ -297,15 +329,29 @@ export async function runApprovalTurn(
     userId,
   });
   const stream = await client.sessions.createTurnStream(sessionId, {
-    input: approvals.map((a) => ({
-      type: "user.tool_approval" as const,
-      threadId: a.threadId,
-      toolCallId: a.toolCallId,
-      approval: a.allow
-        ? { status: "allow" as const }
-        : { status: "deny" as const, reason: a.reason ?? "denied" },
-    })),
+    input: turnInputsForPendingGates(
+      approvals,
+      pendingApprovalsFromRunEvents(listRunEvents(db, activeRunId)),
+    ),
   });
+  updateRun(db, activeRunId, {
+    status: "running",
+    currentStage: "approval",
+  });
+  const result = await collectTurn(stream, activeRunId);
+  if (result.status === "error") {
+    updateRun(db, activeRunId, {
+      status: "waiting_approval",
+      currentStage: "approval",
+    });
+    const events = listRunEvents(db, activeRunId);
+    return {
+      ...result,
+      status: "waiting_approval",
+      pendingApprovals: pendingApprovalsFromRunEvents(events),
+      events,
+    };
+  }
   for (const approval of approvals) {
     appendRunEvent(db, activeRunId, {
       type: "approval.resolved",
@@ -318,11 +364,15 @@ export async function runApprovalTurn(
       },
     });
   }
-  updateRun(db, activeRunId, {
-    status: "running",
-    currentStage: "approval",
-  });
-  return collectTurn(stream, activeRunId);
+  const events = listRunEvents(db, activeRunId);
+  return {
+    ...result,
+    pendingApprovals:
+      result.status === "waiting_approval"
+        ? pendingApprovalsFromRunEvents(events)
+        : result.pendingApprovals,
+    events,
+  };
 }
 
 function ensureRun(
@@ -449,6 +499,8 @@ export async function collectTurn(
     };
   }
   if (interrupted) return summaryFromPersistedRun(db, runId);
+  const persisted = summaryFromPersistedRun(db, runId);
+  if (persisted.status === "waiting_approval") return persisted;
   return {
     ...summarizeTurnEvents(rawEvents),
     runId,
