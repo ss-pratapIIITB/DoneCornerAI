@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  pendingApprovalsForRequest,
   pendingApprovalsFromRunEvents,
   sessionRailState,
   type ReplayApproval,
@@ -148,5 +149,28 @@ describe("pending human gates", () => {
       type: "user.tool_response",
       content: QUESTION_STOP_CONTENT,
     });
+  });
+
+  it("drops empty tool call ids and prefers ids recovered from run events", () => {
+    const events = [
+      event("approval.requested", "Approval required for load_lake", {
+        name: "load_lake",
+        toolCallId: "call-real",
+        threadId: "main",
+      }),
+    ];
+    expect(
+      pendingApprovalsForRequest(
+        [{ threadId: "main", toolCallId: "", kind: "approval" }],
+        events,
+      ),
+    ).toEqual([
+      {
+        threadId: "main",
+        toolCallId: "call-real",
+        name: "load_lake",
+        kind: "approval",
+      },
+    ]);
   });
 });

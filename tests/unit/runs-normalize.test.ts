@@ -233,6 +233,77 @@ describe("TrueForge run event normalization", () => {
     expect(failed[0]?.type).toBe("tool.failed");
   });
 
+  it("unwraps TrueForge call_tool wrappers once streamed arguments arrive", () => {
+    const context = createNormalizationContext();
+    expect(
+      normalizeTrueForgeEvent(
+        {
+          type: "model.message.delta",
+          threadId: "main",
+          toolCalls: [
+            {
+              id: "call-lake",
+              function: { name: "call_tool", arguments: "" },
+              toolInfo: { type: "truefoundry-system", name: "call_tool" },
+            },
+          ],
+        },
+        context,
+      ).filter((event) => event.type === "tool.started"),
+    ).toEqual([]);
+
+    const started = normalizeTrueForgeEvent(
+      {
+        type: "model.message",
+        threadId: "main",
+        toolCalls: [
+          {
+            id: "call-lake",
+            function: {
+              name: "call_tool",
+              arguments:
+                '{"mcp_server":"donecorner","tool_name":"load_lake","input":{"runId":"run-1","userId":"cfo"}}',
+            },
+            toolInfo: { type: "truefoundry-system", name: "call_tool" },
+          },
+        ],
+      },
+      context,
+    );
+    expect(started).toContainEqual(
+      expect.objectContaining({
+        type: "tool.started",
+        summary: "Calling load_lake",
+        details: {
+          toolCallId: "call-lake",
+          name: "load_lake",
+          arguments: { runId: "run-1", userId: "cfo" },
+          threadId: "main",
+          source: "truefoundry-system",
+        },
+      }),
+    );
+
+    expect(
+      normalizeTrueForgeEvent(
+        {
+          type: "tool.approval_required",
+          threadId: "main",
+          toolCalls: [{ id: "call-lake", sourceEventId: "msg-lake" }],
+        },
+        context,
+      )[0],
+    ).toMatchObject({
+      type: "approval.requested",
+      summary: "Approval required for load_lake",
+      details: {
+        toolCallId: "call-lake",
+        name: "load_lake",
+        arguments: { runId: "run-1", userId: "cfo" },
+      },
+    });
+  });
+
   it("keeps tool.response_required call ids so the rail can resume the question", () => {
     const context = createNormalizationContext();
     normalizeTrueForgeEvent(

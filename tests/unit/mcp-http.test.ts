@@ -46,12 +46,18 @@ describe("MCP JSON-RPC", () => {
     expect(names).toContain("query_lake");
     expect(names).toContain("query_sql");
     expect(names).toContain("present_chart");
+    const present = (
+      listed as { result: { tools: { name: string; description: string }[] } }
+    ).result.tools.find((t) => t.name === "present_chart");
+    expect(present?.description).toMatch(/filters\.period|month vs month/i);
     expect(names).toContain("load_lake");
     expect(names).toContain("list_dashboard_primitives");
     expect(names).toContain("validate_dashboard");
     expect(names).toContain("preview_dashboard");
     expect(names).toContain("save_personal_dashboard");
     expect(names).toContain("request_publish_org");
+    expect(names).toContain("lookup_public_company");
+    expect(names).toContain("fetch_public_url");
   });
 
   it("calls load_sample_pack and returns periods", async () => {
@@ -89,4 +95,47 @@ describe("MCP HTTP route", () => {
     expect(res.status).toBe(202);
     expect(await res.text()).toBe("");
   });
+
+  it("returns JSON-RPC JSON when Accept lists JSON and event-stream", async () => {
+    process.env.DONECORNER_DB = join(
+      mkdtempSync(join(tmpdir(), "dc-mcp-accept-")),
+      "t.sqlite",
+    );
+    const { POST } = await import("@/app/api/mcp/route");
+    const res = await POST(
+      new Request("http://localhost/api/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "test", version: "0" },
+          },
+        }),
+      }),
+    );
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const body = (await res.json()) as {
+      result: { serverInfo: { name: string } };
+    };
+    expect(body.result.serverInfo.name).toBe("donecorner");
+  });
+
+  it("returns 405 for GET event-stream so TrueForge uses POST JSON-RPC", async () => {
+    const { GET } = await import("@/app/api/mcp/route");
+    const res = await GET(
+      new Request("http://localhost/api/mcp", {
+        headers: { accept: "text/event-stream" },
+      }),
+    );
+    expect(res.status).toBe(405);
+  });
 });
+

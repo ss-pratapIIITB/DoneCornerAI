@@ -24,12 +24,14 @@ import {
   consumeLakeLoadApproval,
   requireLakeLoadApproval,
 } from "@/lib/lake/approvals";
+import { coerceLakeQuery } from "@/lib/lake/coerce-query";
 import { queryLake } from "@/lib/lake/query";
 import { queryWarehouseSql } from "@/lib/lake/sql";
-import type { LakeGrain, LakeQuery } from "@/lib/lake/types";
 import { applyMapping } from "@/lib/mapping/apply";
 import { createMappingProposal } from "@/lib/mapping/proposals";
 import { appendRunEvent, getRun } from "@/lib/runs/ledger";
+import { fetchPublicUrl } from "@/lib/web/fetch-public";
+import { lookupPublicCompany } from "@/lib/web/public-company";
 
 export const TOOL_NAMES = [
   "load_sample_pack",
@@ -50,6 +52,8 @@ export const TOOL_NAMES = [
   "get_dashboard",
   "save_personal_dashboard",
   "request_publish_org",
+  "lookup_public_company",
+  "fetch_public_url",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -153,30 +157,20 @@ export async function callTool(
     case "query_cube":
       return { rows: queryCube(db, args as CubeQuery) };
     case "query_lake": {
-      const q = {
-        metric: String(args.metric ?? "revenue"),
-        grain: String(args.grain ?? "period") as LakeGrain,
-        filters: (args.filters ?? { scenario: "actual" }) as LakeQuery["filters"],
-      };
+      const q = coerceLakeQuery(args);
       return { rows: await queryLake(q), query: q };
     }
     case "query_sql":
       return queryWarehouseSql(String(args.sql ?? ""));
     case "present_chart": {
-      const query = {
-        metric: String(args.metric ?? "revenue"),
-        grain: String(args.grain ?? "period"),
-        filters: (args.filters ?? { scenario: "actual" }) as LakeQuery["filters"],
-      };
-      const rows = await queryLake({
-        ...query,
-        grain: query.grain as LakeGrain,
-      });
+      const query = coerceLakeQuery(args);
+      const rows = await queryLake(query);
+      const title = String(args.title ?? query.metric);
       return {
-        title: String(args.title ?? query.metric),
+        title,
         query,
         rows,
-        chart: { title: String(args.title ?? query.metric), query },
+        chart: { title, query },
       };
     }
     case "list_dashboard_primitives":
@@ -260,6 +254,10 @@ export async function callTool(
       const personalId = String(args.personalId ?? "");
       return requestPublishOrg(db, userId, personalId);
     }
+    case "lookup_public_company":
+      return lookupPublicCompany(String(args.query ?? args.name ?? args.ticker ?? ""));
+    case "fetch_public_url":
+      return fetchPublicUrl(String(args.url ?? ""));
     default:
       throw new Error(`Unknown tool ${name}`);
   }

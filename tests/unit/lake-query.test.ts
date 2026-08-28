@@ -34,6 +34,23 @@ describe.skipIf(!live)("Postgres lake", () => {
     /* leave seeded warehouse for the local demo */
   });
 
+  it("returns two Cloud revenue bars for Feb vs August", async () => {
+    const { coerceLakeQuery } = await import("@/lib/lake/coerce-query");
+    const rows = await queryLake(
+      coerceLakeQuery({
+        metric: "revenue",
+        grain: "period",
+        filters: {
+          scenario: "actual",
+          company: "Cloud",
+          period: ["Feb", "August"],
+        },
+      }),
+    );
+    expect(rows.map((row) => row.key)).toEqual(["2025-02", "2025-08"]);
+    expect(rows.every((row) => row.value > 0)).toBe(true);
+  });
+
   it("returns twelve period rows for revenue", async () => {
     const rows = await queryLake({
       metric: "revenue",

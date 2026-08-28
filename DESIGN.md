@@ -15,6 +15,12 @@ colors:
   chart-blue: "#4d8eff"
   positive: "#40c486"
   analytic-cyan: "#4bc7d6"
+  butter-white: "#f4ead8"
+  light-ink: "#1c1710"
+  light-rail: "#efe4c4"
+  light-edit: "#ead9b0"
+  light-edit-text: "#8a4a12"
+  light-raised: "#fff6e8"
 typography:
   headline:
     fontFamily: "IBM Plex Sans, sans-serif"
@@ -120,6 +126,10 @@ The palette is a restrained operations spectrum: near-black neutrals carry the w
 - **Operations Paper:** primary text and inverse active-control text.
 - **Muted Data:** secondary labels, metadata, axes, and inactive controls.
 - **Hard Line:** borders, dividers, chart axes, and structural separation.
+
+### Light field
+
+Daytime review uses the same Signal Room geometry on butter white (`#f4ead8`), not pure white. Ink and paper invert: dark text on warm paper, slightly deeper cream for rails and panels. Signal orange darkens so it still reads on the butter ground. Dark / Light lives in the top bar and persists in the browser.
 
 ### Named Rules
 

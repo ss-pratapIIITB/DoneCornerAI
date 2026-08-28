@@ -39,7 +39,7 @@ TRUEFORGE_SANDBOX=1 npm run dev
 
 Sample pack **lake replace** needs TrueForge: `load_lake` is approval-gated. Persist the query session id in `localStorage` key `donecorner.tf.session`.
 
-MCP tools: HTTP JSON-RPC at `/api/mcp` (TrueForge remote server `donecorner`). The portal registers that server and the `close-pack` agent when TrueForge is up. Also `mcp/server.ts` stdio for local debugging. Tools: `load_sample_pack`, `load_lake` (approval required), `upload_close_file`, `inspect_file`, `get_mapping_proposal`, `apply_mapping` (approval required), `describe_schema`, `query_cube`, `query_lake`, `query_sql` (read-only Postgres), `present_chart`, `list_dashboard_primitives`, `validate_dashboard`, `preview_dashboard`, `get_dashboard`, `save_personal_dashboard`, `request_publish_org` (approval required). Override the MCP URL with `DONECORNER_MCP_URL` if TrueForge cannot reach `http://127.0.0.1:$PORT/api/mcp`.
+MCP tools: HTTP JSON-RPC at `/api/mcp` (TrueForge remote server `donecorner`). The portal registers that server and the `close-pack` agent when TrueForge is up. Also `mcp/server.ts` stdio for local debugging. Tools: `load_sample_pack`, `load_lake` (approval required), `upload_close_file`, `inspect_file`, `get_mapping_proposal`, `apply_mapping` (approval required), `describe_schema`, `query_cube`, `query_lake`, `query_sql` (read-only Postgres), `present_chart`, `lookup_public_company`, `fetch_public_url` (Wikipedia + SEC allowlist), `list_dashboard_primitives`, `validate_dashboard`, `preview_dashboard`, `get_dashboard`, `save_personal_dashboard`, `request_publish_org` (approval required). Override the MCP URL with `DONECORNER_MCP_URL` if TrueForge cannot reach `http://127.0.0.1:$PORT/api/mcp`.
 
 ## Contributing
 

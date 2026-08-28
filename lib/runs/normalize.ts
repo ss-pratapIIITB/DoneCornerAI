@@ -1,4 +1,8 @@
 import type { NewRunEvent } from "@/lib/runs/types";
+import {
+  isEmptyToolArgs,
+  unwrapGatedTool,
+} from "@/lib/runs/gated-tool";
 
 type ToolState = {
   name: string;
@@ -103,7 +107,51 @@ function toolResponseFailed(raw: Record<string, unknown>, payload: unknown): boo
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
   const body = payload as Record<string, unknown>;
   if (body.isError === true || body.is_error === true) return true;
-  return typeof body.error === "string" && body.error.trim().length > 0;
+  if (typeof body.error === "string") return body.error.trim().length > 0;
+  return Array.isArray(body.error) && body.error.length > 0;
+}
+
+function rememberTool(
+  context: NormalizationContext,
+  id: string,
+  rawName: string,
+  rawArgs: unknown,
+  threadId: string,
+  source: string,
+): { state: ToolState; emitStarted: boolean } {
+  const unwrapped = unwrapGatedTool(rawName, rawArgs);
+  const incoming: ToolState = {
+    name: unwrapped.name,
+    arguments: unwrapped.arguments,
+    threadId,
+    source,
+  };
+  const existing = context.tools.get(id);
+  if (!existing) {
+    context.tools.set(id, incoming);
+    return {
+      state: incoming,
+      emitStarted: !(
+        incoming.name === "call_tool" && isEmptyToolArgs(incoming.arguments)
+      ),
+    };
+  }
+  const name =
+    existing.name === "call_tool" || existing.name === "tool"
+      ? incoming.name
+      : existing.name;
+  const args = isEmptyToolArgs(existing.arguments)
+    ? incoming.arguments
+    : existing.arguments;
+  const next: ToolState = { ...existing, name, arguments: args };
+  context.tools.set(id, next);
+  return {
+    state: next,
+    emitStarted:
+      (existing.name === "call_tool" || existing.name === "tool") &&
+      next.name !== "call_tool" &&
+      next.name !== "tool",
+  };
 }
 
 export function normalizeTrueForgeEvent(
@@ -139,21 +187,22 @@ export function normalizeTrueForgeEvent(
     }
     for (const call of toolCalls(raw.toolCalls ?? raw.tool_calls)) {
       const id = String(call.id ?? call.toolCallId ?? call.tool_call_id ?? "");
-      const name = toolName(call);
-      if (!id || !name || name === "tool") continue;
-      if (context.tools.has(id)) continue;
+      const rawName = toolName(call);
+      if (!id || !rawName) continue;
       const info = record(call.toolInfo ?? call.tool_info);
-      const state: ToolState = {
-        name,
-        arguments: toolArguments(call),
+      const { state, emitStarted } = rememberTool(
+        context,
+        id,
+        rawName,
+        toolArguments(call),
         threadId,
-        source: String(info.type ?? info.serverName ?? info.server_name ?? "tool"),
-      };
-      context.tools.set(id, state);
+        String(info.type ?? info.serverName ?? info.server_name ?? "tool"),
+      );
+      if (!emitStarted) continue;
       events.push(
-        event("tool.started", stageForTool(name), `Calling ${name}`, {
+        event("tool.started", stageForTool(state.name), `Calling ${state.name}`, {
           toolCallId: id,
-          name,
+          name: state.name,
           arguments: state.arguments,
           threadId,
           source: state.source,
@@ -197,14 +246,18 @@ export function normalizeTrueForgeEvent(
         call.toolCallId ?? call.tool_call_id ?? call.id ?? "",
       );
       const known = context.tools.get(toolCallId);
-      const name = known?.name ?? toolName(call);
+      const gated = unwrapGatedTool(
+        known?.name ?? toolName(call),
+        known?.arguments ?? toolArguments(call),
+      );
       return event(
         "approval.requested",
-        stageForTool(name),
-        `${name} needs input`,
+        stageForTool(gated.name),
+        `${gated.name} needs input`,
         {
           toolCallId,
-          name,
+          name: gated.name,
+          arguments: gated.arguments,
           threadId,
           responseRequired: true,
         },
@@ -218,15 +271,18 @@ export function normalizeTrueForgeEvent(
         call.toolCallId ?? call.tool_call_id ?? call.id ?? "",
       );
       const known = context.tools.get(toolCallId);
-      const name = known?.name ?? toolName(call);
+      const gated = unwrapGatedTool(
+        known?.name ?? toolName(call),
+        known?.arguments ?? toolArguments(call),
+      );
       return event(
         "approval.requested",
-        stageForTool(name),
-        `Approval required for ${name}`,
+        stageForTool(gated.name),
+        `Approval required for ${gated.name}`,
         {
           toolCallId,
-          name,
-          arguments: known?.arguments ?? toolArguments(call),
+          name: gated.name,
+          arguments: gated.arguments,
           threadId,
           sourceEventId: call.sourceEventId ?? call.source_event_id,
         },

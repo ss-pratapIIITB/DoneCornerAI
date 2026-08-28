@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 4 — Hackathon evidence
 
-**Current step:** Session human-gate: resume `ask_user_question` / keep approval buttons when a later turn 422s.
+**Current step:** PR + Qodo Highs on feat/agent-activity-rail (smooth rail, cookie theme, public-company MCP).
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -89,6 +89,18 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-27 | Personal dashboard drafts auto-save; org publish remains the approval gate | Matches the close-pack spec; Qodo overwrite finding is by design |
 | 2026-08-27 | Sample lake reset and quarantined discard require explicit confirm | Destructive, but not org-publish; TrueForge approval stays on mapping and org overwrite |
 | 2026-08-27 | Replacing Postgres lake facts requires a current TrueForge `load_lake` approval | Qodo High on PR 14; HTTP `confirm: true` is not an approval-tool outcome |
+| 2026-08-28 | Demo blank slate is operator truncate + sqlite wipe, not an HTTP lake reset | Judges must still see Load sample pack → `load_lake` approval; leftover warehouse was why Close opened already filled |
+| 2026-08-28 | Register `donecorner` MCP at the live portal origin | `next dev` bound 3001; default PORT 3000 is a hung Next that times out, so TrueForge never reached `load_lake` |
+| 2026-08-28 | MCP POST prefers JSON when Accept lists JSON and event-stream | TrueForge sends both; wrapping initialize in SSE left the agent with 0 tools |
+| 2026-08-28 | Portal always binds 3000; if taken, kill occupant and restart | Silent hop to 3001 registered MCP at a hung 3000 and broke load_lake |
+| 2026-08-28 | Turn JSON must copy status onto the run; load-pack confirm stays in the Signal Room | Header Done + card Running was `ask()` never calling `mergeTurnIntoRun`; `window.confirm` is not a product surface |
+| 2026-08-28 | Unwrap TrueForge `call_tool` (`tool_name` + `input`) before lake/mapping authorization | Approve looked dead because the first POST 400'd or took 2–4s with no busy state, then MCP still blocked `load_lake` |
+| 2026-08-28 | Agent charts render in the rail; pin later; `present_chart` coerces month names and Cloud-as-vertical | Feb vs August was a 12-month board dump; comparison is one MCP call with `filters.period` |
+| 2026-08-28 | Portal Reset clears session/boards, not Postgres facts | Demo replay without an ungated lake truncate |
+| 2026-08-28 | Light mode is butter white `#f4ead8`, not pure white | User request; Signal Room tokens invert, orange darkens for contrast |
+| 2026-08-28 | Theme from cookie, not a layout `<script>` | React 19 never executes scripts rendered in components |
+| 2026-08-28 | Agent transcript auto-scrolls smoothly unless the CFO scrolled up | Chat should follow the latest turn without fighting a reader |
+| 2026-08-28 | `lookup_public_company` / `fetch_public_url` MCP on Wikipedia + SEC allowlist | Real-company comparables without open internet/SSRF |
 
 ## Open questions
 

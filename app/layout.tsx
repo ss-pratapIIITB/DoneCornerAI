@@ -1,5 +1,7 @@
 import { IBM_Plex_Sans } from "next/font/google";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { parsePortalTheme, THEME_COOKIE } from "@/lib/theme/cookie";
 import "./globals.css";
 import "./signal-room.css";
 
@@ -23,11 +25,12 @@ FORM: Signal Room, top-ranked grounded direction selected by the user.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const theme = parsePortalTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang="en">
+    <html lang="en" data-theme={theme} suppressHydrationWarning>
       <body className={sans.className}>
         <template
           data-design-contract="donecorner-signal-room"

@@ -137,7 +137,11 @@ export function activityHeadline(
   if (names.length === 1) return `Used ${names[0]}`;
   if (names.length > 1 && names.length <= 3) return `Used ${names.join(", ")}`;
   if (names.length > 3) return `Used ${names.length} tools`;
-  if (steps.some((step) => step.system)) return "Looked up tools";
   if (runStatus === "waiting_approval") return "Waiting for approval";
+  if (steps.some((step) => step.system)) return "Looked up tools";
+  if (runStatus === "running" || runStatus === "queued") {
+    return "Waiting for the first agent event";
+  }
+  if (runStatus === "done") return "Replied without tools";
   return "Agent activity";
 }

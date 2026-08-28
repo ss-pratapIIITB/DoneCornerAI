@@ -12,8 +12,9 @@ const portal = vi.hoisted(() => ({
     board: Dashboard;
     requestPublish: () => Promise<void>;
     setAgent: () => void;
-    lastCharts: [];
     pinChart: () => Promise<void>;
+    loadSamplePack: () => Promise<void>;
+    canLoadSamplePack: boolean;
   },
 }));
 
@@ -83,8 +84,9 @@ describe("generated dashboard renderers", () => {
       },
       requestPublish: async () => {},
       setAgent: () => {},
-      lastCharts: [],
       pinChart: async () => {},
+      loadSamplePack: async () => undefined,
+      canLoadSamplePack: true,
     };
   });
 

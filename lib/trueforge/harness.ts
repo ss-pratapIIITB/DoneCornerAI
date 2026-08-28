@@ -6,20 +6,33 @@ import {
   closePackSpec,
 } from "@/lib/trueforge/agent";
 
-export function donecornerMcpUrl(): string {
+export function donecornerMcpUrl(origin?: string | null): string {
   if (process.env.DONECORNER_MCP_URL) return process.env.DONECORNER_MCP_URL;
+  if (origin) {
+    try {
+      const parsed = new URL(origin);
+      const host =
+        parsed.hostname === "localhost" || parsed.hostname === "::1"
+          ? "127.0.0.1"
+          : parsed.hostname;
+      const port = parsed.port ? `:${parsed.port}` : "";
+      return `${parsed.protocol}//${host}${port}/api/mcp`;
+    } catch {
+      // Fall through to PORT.
+    }
+  }
   const port = process.env.PORT ?? "3000";
   return `http://127.0.0.1:${port}/api/mcp`;
 }
 
-export async function ensureHarness(): Promise<void> {
+export async function ensureHarness(origin?: string | null): Promise<void> {
   const client = trueforge();
   await client.settings.mcpServers.createOrUpdate({
     manifest: {
       name: "donecorner",
       description: "Northstar close pack: cube, dashboards, sandbox ingest, publish",
       type: "remote",
-      url: donecornerMcpUrl(),
+      url: donecornerMcpUrl(origin),
     },
   });
 

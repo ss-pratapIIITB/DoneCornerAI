@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { LakeChart } from "@/components/dashboard/LakeChart";
 import { GeneratedDashboardWidget } from "@/components/dashboard/GeneratedDashboardWidget";
-import { PinChartMenu } from "@/components/dashboard/PinChartMenu";
+import { LakeChart } from "@/components/dashboard/LakeChart";
+import { LakeLoadConfirm } from "@/components/dashboard/LakeLoadConfirm";
 import { PnlTable } from "@/components/dashboard/PnlTable";
 import { WidgetFrame, downloadCsv } from "@/components/dashboard/WidgetFrame";
 import { WidgetNote } from "@/components/dashboard/WidgetNote";
@@ -43,8 +43,6 @@ export function CloseCanvas() {
   const {
     board,
     requestPublish,
-    lastCharts,
-    pinChart,
     loadSamplePack,
     canLoadSamplePack,
   } = usePortal();
@@ -101,10 +99,6 @@ export function CloseCanvas() {
   );
 
   async function loadPack() {
-    const confirmed = window.confirm(
-      "Load the sample lake pack? This replaces current warehouse facts.",
-    );
-    if (!confirmed) return;
     setLoading(true);
     setError(null);
     try {
@@ -154,14 +148,11 @@ export function CloseCanvas() {
           <p>Exceptions first. Every signal traces back to the lake.</p>
         </div>
         <div className="close-actions">
-          <button
-            type="button"
-            className="secondary-action"
-            onClick={() => void loadPack()}
-            disabled={loading || !canLoadSamplePack}
-          >
-            {loading ? "Loading…" : "Load sample pack"}
-          </button>
+          <LakeLoadConfirm
+            busy={loading}
+            disabled={!canLoadSamplePack}
+            onStart={() => void loadPack()}
+          />
           {mode === "edit" ? (
             <button type="button" onClick={() => void requestPublish()}>
               Publish to org
@@ -188,7 +179,7 @@ export function CloseCanvas() {
         <div className="signal-stat">
           <span>Lake coverage</span>
           <strong>{pnl?.periods.length ?? 0}/12</strong>
-          <small>{facts?.toLocaleString() ?? "Existing"} facts indexed</small>
+          <small>{facts != null ? facts.toLocaleString() : "0"} facts indexed</small>
         </div>
         <div className="signal-stat">
           <span>Net income</span>
@@ -267,7 +258,7 @@ export function CloseCanvas() {
 
       <div className="signal-pnl">
         <WidgetFrame title="P&L · actuals" defaultH={26} allowResize={mode === "edit"}>
-          {pnl ? (
+          {pnl?.periods.length ? (
             <PnlTable
               periods={pnl.periods}
               accounts={pnl.accounts}
@@ -293,22 +284,12 @@ export function CloseCanvas() {
         </WidgetFrame>
       </div>
 
-      {lastCharts.length || board?.widgets.length ? (
+      {board?.widgets.length ? (
         <section className="saved-signals">
           <div className="saved-signals-head">
             <h2>Saved signals</h2>
           </div>
-          {lastCharts.map((c, i) => (
-            <AgentChartBlock
-              key={`${c.title}-${i}`}
-              spec={c}
-              canPin={mode === "edit"}
-              onPin={(boardId) => pinChart(c, boardId)}
-            />
-          ))}
-
-          {board?.widgets.length ? (
-            <div
+          <div
               className="dashboard-widget-grid"
               style={{
                 gridTemplateColumns: `repeat(${board.layout?.columns ?? 12}, minmax(0, 1fr))`,
@@ -349,7 +330,6 @@ export function CloseCanvas() {
                 );
               })}
             </div>
-          ) : null}
         </section>
       ) : null}
     </section>
@@ -398,44 +378,6 @@ function PinnedLakeWidget({
     >
       <LakeChart query={query} rows={rows} onQueryChange={setQuery} />
       <WidgetNote widget={widget} />
-    </WidgetFrame>
-  );
-}
-
-function AgentChartBlock({
-  spec,
-  canPin,
-  onPin,
-}: {
-  spec: { title: string; query: LakeQuery };
-  canPin: boolean;
-  onPin: (boardId?: string) => Promise<void>;
-}) {
-  const [rows, setRows] = useState<LakeRow[]>([]);
-  const [query, setQuery] = useState<LakeQuery>(spec.query);
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/lake/query", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(query),
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : { rows: [] }))
-      .then((body: { rows?: LakeRow[] }) => setRows(body.rows ?? []))
-      .catch((error: Error) => {
-        if (error.name !== "AbortError") setRows([]);
-      });
-    return () => controller.abort();
-  }, [query]);
-  return (
-    <WidgetFrame
-      title={spec.title}
-      extra={<PinChartMenu onPin={onPin} disabled={!canPin} />}
-      allowResize={canPin}
-      onExportCsv={() => downloadCsv(`${spec.title}.csv`, rows)}
-    >
-      <LakeChart query={query} rows={rows} onQueryChange={setQuery} />
     </WidgetFrame>
   );
 }

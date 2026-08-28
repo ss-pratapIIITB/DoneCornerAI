@@ -145,7 +145,8 @@ export const MCP_TOOLS: McpToolDef[] = [
   },
   {
     name: "present_chart",
-    description: "Return a chart spec and rows for the portal to render and pin.",
+    description:
+      "Return a chart spec and rows for the rail to render. For month vs month, pass filters.period or compare as two YYYY-MM keys or month names (Feb, August). Cloud is a vertical, not a company. Do not chart every period then extract two months.",
     inputSchema: {
       type: "object",
       properties: {
@@ -153,6 +154,12 @@ export const MCP_TOOLS: McpToolDef[] = [
         metric: { type: "string" },
         grain: { type: "string" },
         filters: { type: "object" },
+        compare: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Two months to compare, e.g. [\"2025-02\",\"2025-08\"] or [\"Feb\",\"August\"].",
+        },
       },
       required: ["metric", "grain"],
     },
@@ -228,6 +235,28 @@ export const MCP_TOOLS: McpToolDef[] = [
         personalId: { type: "string" },
       },
       required: ["userId", "personalId"],
+    },
+  },
+  {
+    name: "lookup_public_company",
+    description:
+      "Look up a real public company (name or ticker) on Wikipedia and SEC EDGAR. Use for comparables against synthetic Northstar. Do not write results into the lake.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Company name or ticker, e.g. Salesforce or CRM" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "fetch_public_url",
+    description:
+      "GET an https page from the public allowlist (en.wikipedia.org, www.sec.gov, data.sec.gov). For comparables only; never ingest into the lake.",
+    inputSchema: {
+      type: "object",
+      properties: { url: { type: "string" } },
+      required: ["url"],
     },
   },
 ];
