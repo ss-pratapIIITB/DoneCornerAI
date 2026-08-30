@@ -19,7 +19,7 @@ npm run test:e2e                  # playwright
 npm run dev                       # http://localhost:3000
 ```
 
-Copy `.env.example` to `.env.local` if you need to override `DATABASE_URL`. Default is `postgres://$USER@127.0.0.1:5432/donecorner`. Then click **Load sample pack** — with TrueForge up, the rail pauses on `load_lake` before it truncates warehouse facts. After approval, Postgres holds ~10k fact rows and `data/lake/raw/northstar-group/facts.csv` is written.
+Copy `.env.example` to `.env.local` if you need to override `DATABASE_URL`. Default is `postgres://$USER@127.0.0.1:5432/donecorner`. Production is one Vercel project on `main` (Neon Postgres + `AUTH_SECRET` / `AUTH_CFO_PASSWORD` / `OPENAI_API_KEY` in Vercel env, never `NEXT_PUBLIC_`). Then click **Load sample pack** — with TrueForge up, the rail pauses on `load_lake` before it truncates warehouse facts. After approval, Postgres holds ~10k fact rows and `data/lake/raw/northstar-group/facts.csv` is written.
 
 Demo identity header (optional): `x-demo-user: cfo | fpna | viewer`. Default is `cfo`.
 

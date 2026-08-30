@@ -845,6 +845,9 @@ export function AppShell({ children }: Props) {
             <span>Schema</span>
           </Link>
           <p className="rail-user">CFO</p>
+          <form action="/api/auth/logout" method="post" className="sign-out">
+            <button type="submit">Sign out</button>
+          </form>
         </nav>
         <div className="main-col">
           <header className="topbar">

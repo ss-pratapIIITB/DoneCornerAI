@@ -1,12 +1,21 @@
 import { parseDemoUser } from "@/lib/identity/demo-users";
-import { ForbiddenError } from "@/lib/identity/errors";
+import { ForbiddenError, UnauthorizedError } from "@/lib/identity/errors";
+import { readSessionUserId } from "@/lib/identity/session";
 import { SessionBlockedError } from "@/lib/trueforge/gates";
 
 export function userFromRequest(req: Request) {
+  const sessionUser = readSessionUserId(req);
+  if (sessionUser) return parseDemoUser(sessionUser);
+  if (process.env.AUTH_SECRET) {
+    throw new UnauthorizedError();
+  }
   return parseDemoUser(req.headers.get("x-demo-user"));
 }
 
 export function jsonError(err: unknown): Response {
+  if (err instanceof UnauthorizedError) {
+    return Response.json({ error: err.message, code: err.code }, { status: 401 });
+  }
   if (err instanceof ForbiddenError) {
     return Response.json({ error: err.message, code: err.code }, { status: 403 });
   }

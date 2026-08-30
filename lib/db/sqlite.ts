@@ -6,7 +6,9 @@ let cached: DatabaseSync | null = null;
 let cachedPath = "";
 
 export function dbPath(): string {
-  return process.env.DONECORNER_DB ?? ".data/donecorner.sqlite";
+  if (process.env.DONECORNER_DB) return process.env.DONECORNER_DB;
+  if (process.env.VERCEL) return "/tmp/donecorner.sqlite";
+  return ".data/donecorner.sqlite";
 }
 
 export function getDb(): DatabaseSync {

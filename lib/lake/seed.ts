@@ -76,7 +76,6 @@ export async function seedLake(): Promise<{
   const months = periods();
   const products = nodes.filter((n) => n.level === "product");
 
-  mkdirSync(join(LAKE_ROOT, "northstar-group"), { recursive: true });
   const csvLines = ["period,entity_id,account,amount,currency,scenario,source"];
   const facts: { entity_id: string; period: string; account: string; amount: number; scenario: string }[] = [];
   products.forEach((p, idx) => {
@@ -93,7 +92,12 @@ export async function seedLake(): Promise<{
   });
 
   const csvPath = join(LAKE_ROOT, "northstar-group", "facts.csv");
-  writeFileSync(csvPath, csvLines.join("\n"));
+  try {
+    mkdirSync(join(LAKE_ROOT, "northstar-group"), { recursive: true });
+    writeFileSync(csvPath, csvLines.join("\n"));
+  } catch {
+    /* Vercel serverless filesystem is read-only; catalog still lands in Postgres. */
+  }
   const objectId = randomUUID();
   const client = await pool.connect();
   try {

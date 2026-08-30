@@ -1,6 +1,7 @@
 import { jsonError } from "@/lib/api/http";
 import { parseDemoUser } from "@/lib/identity/demo-users";
 import { ForbiddenError } from "@/lib/identity/errors";
+import { readSessionUserId } from "@/lib/identity/session";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import { resetPortalState } from "@/lib/portal/reset";
 
@@ -9,10 +10,12 @@ export const runtime = "nodejs";
 export async function POST(req: Request): Promise<Response> {
   try {
     const header = req.headers.get("x-demo-user");
-    if (header !== "cfo" && header !== "fpna") {
+    const sessionUser = readSessionUserId(req);
+    const id = sessionUser ?? (header === "cfo" || header === "fpna" ? header : null);
+    if (!id) {
       throw new ForbiddenError("Sign in as a finance editor to reset the portal.");
     }
-    const user = parseDemoUser(header);
+    const user = parseDemoUser(id);
     if (!user.canEdit) {
       throw new ForbiddenError("Only finance editors can reset the portal.");
     }

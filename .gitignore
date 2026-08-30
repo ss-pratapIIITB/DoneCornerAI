@@ -5,6 +5,9 @@
 *.pem
 *.key
 
+# Vercel CLI link (project is connected via GitHub)
+.vercel/
+
 # Dependencies and build
 node_modules/
 dist/
