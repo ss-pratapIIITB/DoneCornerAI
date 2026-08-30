@@ -15,6 +15,13 @@ export function patchTrueForgeMain(source: string): string {
   return patched;
 }
 
+export function asRequest(input: RequestInfo | URL, init?: RequestInit): Request {
+  if (input instanceof Request) {
+    return init ? new Request(input, init) : input;
+  }
+  return new Request(String(input), init);
+}
+
 export function probeTimeoutMs(): number {
   return process.env.VERCEL ? 20_000 : 1_500;
 }
@@ -111,7 +118,7 @@ export async function hostedFetch(
     });
   }
   const fetchFn = await booting;
-  return fetchFn(input, init);
+  return fetchFn(asRequest(input, init));
 }
 
 declare global {

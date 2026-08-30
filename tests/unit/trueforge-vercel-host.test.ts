@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { donecornerMcpUrl } from "@/lib/trueforge/harness";
 import { trueforgeBaseUrl } from "@/lib/trueforge/client";
-import { patchTrueForgeMain, prepareHostedEnv, probeTimeoutMs } from "@/lib/trueforge/hosted";
+import { asRequest, patchTrueForgeMain, prepareHostedEnv, probeTimeoutMs } from "@/lib/trueforge/hosted";
 
 describe("TrueForge on Vercel", () => {
   afterEach(() => {
@@ -18,6 +18,15 @@ describe("TrueForge on Vercel", () => {
     delete process.env.XDG_CACHE_HOME;
     delete process.env.SQLITE_PATH;
     delete process.env.STANDALONE;
+  });
+
+  it("turns a string URL plus init into a Request for Hono", () => {
+    const req = asRequest("https://donecorner-ai.vercel.app/api/v1/sessions", {
+      method: "GET",
+    });
+    expect(req).toBeInstanceOf(Request);
+    expect(req.url).toContain("/api/v1/sessions");
+    expect(req.method).toBe("GET");
   });
 
   it("points the SDK at the production host when TRUEFORGE_BASE_URL is unset", () => {
