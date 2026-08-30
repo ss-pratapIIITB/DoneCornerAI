@@ -29,7 +29,7 @@ Demo identity header (optional): `x-demo-user: cfo | fpna | viewer`. Default is 
 npx @truefoundry/trueforge
 ```
 
-Default URL: `http://localhost:8790`. Override with `TRUEFORGE_BASE_URL`. Optional `TRUEFORGE_TOKEN` (OIDC). Optional `TRUEFORGE_MODEL` (default `openai/gpt-5-4-mini`, the cheapest OpenAI model TrueForge lists once an OpenAI key is added).
+Default URL locally: `http://localhost:8790`. On Vercel the portal boots TrueForge in-process. Override with `TRUEFORGE_BASE_URL` only when the harness is elsewhere.
 
 Uploads require the sandbox:
 

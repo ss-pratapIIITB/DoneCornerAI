@@ -89,6 +89,9 @@ describe("donecornerMcpUrl", () => {
   afterEach(() => {
     delete process.env.DONECORNER_MCP_URL;
     delete process.env.PORT;
+    delete process.env.VERCEL;
+    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    delete process.env.DONECORNER_PUBLIC_HOST;
   });
 
   it("follows the portal PORT so TrueForge can reach MCP", () => {

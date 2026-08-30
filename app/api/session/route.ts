@@ -2,6 +2,7 @@ import { jsonError, userFromRequest } from "@/lib/api/http";
 import { probeTrueForge, resumeOrCreateSession } from "@/lib/trueforge/session";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function GET(req: Request): Promise<Response> {
   const health = await probeTrueForge();

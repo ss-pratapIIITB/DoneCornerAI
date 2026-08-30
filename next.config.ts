@@ -3,6 +3,7 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
+  serverExternalPackages: ["@truefoundry/trueforge", "better-sqlite3"],
   turbopack: {
     root: path.join(__dirname),
   },

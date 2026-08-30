@@ -26,14 +26,17 @@ import {
 } from "@/lib/runs/replay";
 import type { RunEvent, RunKind, RunStatus } from "@/lib/runs/types";
 import { trueforge, trueforgeBaseUrl } from "@/lib/trueforge/client";
+import { hostedFetch, probeTimeoutMs } from "@/lib/trueforge/hosted";
 import { CLOSE_PACK_AGENT, closePackModel, closePackSpec } from "@/lib/trueforge/agent";
 import { SessionBlockedError, turnInputsForPendingGates } from "@/lib/trueforge/gates";
 import { ensureHarness } from "@/lib/trueforge/harness";
 
 export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reason: string }> {
   try {
-    const res = await fetch(`${trueforgeBaseUrl().replace(/\/$/, "")}/api/v1/sessions`, {
-      signal: AbortSignal.timeout(1500),
+    const url = `${trueforgeBaseUrl().replace(/\/$/, "")}/api/v1/sessions`;
+    const fetchFn = process.env.VERCEL ? hostedFetch : fetch;
+    const res = await fetchFn(url, {
+      signal: AbortSignal.timeout(probeTimeoutMs()),
     });
     // Auth-gated API still means the harness is up.
     if (res.status === 401 || res.status === 403) return { ok: true };
@@ -44,7 +47,9 @@ export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reas
   } catch {
     return {
       ok: false,
-      reason: "TrueForge is not running. Start it with npx @truefoundry/trueforge (default http://localhost:8790).",
+      reason: process.env.VERCEL
+        ? "TrueForge is still starting on this deployment. Wait a few seconds and refresh."
+        : "TrueForge is not running. Start it with npx @truefoundry/trueforge (default http://localhost:8790).",
     };
   }
 }

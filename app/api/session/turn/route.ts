@@ -5,6 +5,7 @@ import type { RunKind } from "@/lib/runs/types";
 import { probeTrueForge, runUserTurn } from "@/lib/trueforge/session";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function failOwnedRun(runId: string | undefined, userId: string, summary: string) {
   if (!runId) return;

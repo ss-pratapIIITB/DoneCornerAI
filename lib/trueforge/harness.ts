@@ -16,6 +16,8 @@ export function donecornerMcpUrl(origin?: string | null): string {
     const port = trusted.port ? `:${trusted.port}` : "";
     return `${trusted.protocol}//${mapped}${port}/api/mcp`;
   }
+  const vercelHost = vercelPublicHost();
+  if (vercelHost) return `https://${vercelHost}/api/mcp`;
   const port = process.env.PORT ?? "3000";
   return `http://127.0.0.1:${port}/api/mcp`;
 }
@@ -26,6 +28,18 @@ function canonicalHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/^\[|\]$/g, "");
 }
 
+function vercelPublicHost(): string | null {
+  const host = (
+    process.env.DONECORNER_PUBLIC_HOST ??
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+    ""
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "");
+  return host || null;
+}
+
 function trustedPortalOrigin(origin?: string | null): URL | null {
   if (!origin) return null;
   try {
@@ -33,8 +47,8 @@ function trustedPortalOrigin(origin?: string | null): URL | null {
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
     const host = canonicalHostname(parsed.hostname);
     if (LOOPBACK.has(host)) return parsed;
-    const extra = process.env.DONECORNER_PUBLIC_HOST?.trim().toLowerCase();
-    if (extra && host === extra && parsed.protocol === "https:") return parsed;
+    const allowed = vercelPublicHost();
+    if (allowed && host === allowed && parsed.protocol === "https:") return parsed;
     return null;
   } catch {
     return null;
