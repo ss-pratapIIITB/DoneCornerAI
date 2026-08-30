@@ -207,7 +207,7 @@ export function AppShell({ children }: Props) {
           }
         : snapshot.run;
       const events =
-        snapshot.events.length >= (existing?.events.length ?? 0)
+        snapshot.events.length >= (existing?.events?.length ?? 0)
           ? snapshot.events
           : existing?.events ?? [];
       const answer = answerFromEvents(events) || existing?.a || "";
