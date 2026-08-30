@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextRequest } from "next/server";
 import { UnauthorizedError } from "@/lib/identity/errors";
-import { userFromRequest } from "@/lib/api/http";
+import { portalFailureReason, userFromRequest } from "@/lib/api/http";
 import {
   AUTH_COOKIE,
   authenticateCredentials,
@@ -41,6 +41,21 @@ describe("portal login session", () => {
     expect(authenticateCredentials("cfo", "correct-horse")?.id).toBe("cfo");
     expect(authenticateCredentials("cfo@donecorner.ai", "wrong")).toBeNull();
     expect(authenticateCredentials("viewer@donecorner.ai", "correct-horse")).toBeNull();
+  });
+
+  it("surfaces the API error body instead of pretending TrueForge is down", () => {
+    expect(
+      portalFailureReason(
+        {
+          error:
+            'UnprocessableEntityError\nStatus code: 422\nBody: {\n  "error": {\n    "message": "Unknown model \\"openai/gpt-5-4-mini\\" — provider not configured"\n  }\n}',
+        },
+        "TrueForge is not running.",
+      ),
+    ).toContain("provider not configured");
+    expect(
+      portalFailureReason({ reason: "TrueForge is still starting." }, "TrueForge is not running."),
+    ).toBe("TrueForge is still starting.");
   });
 
   it("leaves login, auth, and MCP public so TrueForge can still reach tools", () => {

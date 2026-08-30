@@ -58,33 +58,44 @@ export function prepareHostedEnv(): void {
 
 let booting: Promise<typeof fetch> | null = null;
 
+/** TrueForge Zod is snake_case + strict; camelCase PUTs never register a provider. */
+export function openaiProviderSeedBody(
+  apiKey: string,
+  modelName = process.env.TRUEFORGE_MODEL ?? "openai/gpt-5-4-mini",
+) {
+  const modelId = modelName.replace(/^openai\//, "");
+  return {
+    manifest: {
+      type: "openai" as const,
+      auth: { api_key: apiKey },
+      models: [{ model_id: modelId, name: modelId, properties: {} }],
+    },
+  };
+}
+
 async function seedOpenAi(fetchFn: typeof fetch): Promise<void> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return;
+  if (!apiKey) {
+    if (process.env.VERCEL) {
+      console.error(
+        "OPENAI_API_KEY is not set; TrueForge sessions will 422 until a provider exists.",
+      );
+    }
+    return;
+  }
   const origin = publicOrigin() ?? "http://127.0.0.1:8790";
-  const modelId = (process.env.TRUEFORGE_MODEL ?? "openai/gpt-5-4-mini").replace(
-    /^openai\//,
-    "",
-  );
-  await fetchFn(
+  const res = await fetchFn(
     new Request(`${origin}/api/v1/settings/model-providers`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        manifest: {
-          type: "openai",
-          auth: { apiKey },
-          models: [
-            {
-              modelId,
-              name: modelId,
-              properties: {},
-            },
-          ],
-        },
-      }),
+      body: JSON.stringify(openaiProviderSeedBody(apiKey)),
     }),
   );
+  if (!res.ok) {
+    throw new Error(
+      `TrueForge OpenAI seed failed (${res.status}): ${await res.text()}`,
+    );
+  }
 }
 
 async function boot(): Promise<typeof fetch> {

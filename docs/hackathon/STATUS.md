@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 4 — Hackathon evidence
 
-**Current step:** Host TrueForge inside the Vercel portal (in-process harness).
+**Current step:** Hosted TrueForge on Vercel — OpenAI provider seed.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -103,6 +103,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-28 | `lookup_public_company` / `fetch_public_url` MCP on Wikipedia + SEC allowlist | Real-company comparables without open internet/SSRF |
 | 2026-08-28 | Public fetch follows redirects only onto the allowlist; JSON uses a larger cap | Qodo High on PR 17: 24k truncation broke EDGAR; auto-follow was SSRF |
 | 2026-08-30 | TrueForge runs in-process on the Vercel portal | Production cannot reach localhost:8790; same deployment owns the harness |
+| 2026-08-31 | Hosted OpenAI seed uses snake_case `api_key` / `model_id` | Strict TrueForge Zod rejected camelCase; sessions 422'd as unknown model |
 
 ## Open questions
 

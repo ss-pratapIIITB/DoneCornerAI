@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { donecornerMcpUrl } from "@/lib/trueforge/harness";
 import { trueforgeBaseUrl } from "@/lib/trueforge/client";
-import { asRequest, patchTrueForgeMain, prepareHostedEnv, probeTimeoutMs } from "@/lib/trueforge/hosted";
+import {
+  asRequest,
+  openaiProviderSeedBody,
+  patchTrueForgeMain,
+  prepareHostedEnv,
+  probeTimeoutMs,
+} from "@/lib/trueforge/hosted";
 
 describe("TrueForge on Vercel", () => {
   afterEach(() => {
@@ -69,5 +75,15 @@ describe("TrueForge on Vercel", () => {
     const patched = patchTrueForgeMain(source);
     expect(patched).toContain("globalThis.__TRUEFORGE_FETCH = app.fetch");
     expect(patched).not.toMatch(/\bserve\(/);
+  });
+
+  it("seeds OpenAI with snake_case fields TrueForge Zod will accept", () => {
+    const body = openaiProviderSeedBody("sk-test", "openai/gpt-5-4-mini");
+    expect(body.manifest.type).toBe("openai");
+    expect(body.manifest.auth).toEqual({ api_key: "sk-test" });
+    expect(body.manifest.models).toEqual([
+      { model_id: "gpt-5-4-mini", name: "gpt-5-4-mini", properties: {} },
+    ]);
+    expect(JSON.stringify(body)).not.toMatch(/apiKey|modelId/);
   });
 });

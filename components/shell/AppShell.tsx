@@ -29,6 +29,7 @@ import {
   closePackTurnMessage,
   loadSampleAgentMessage,
 } from "@/lib/trueforge/load-lake-turn";
+import { portalFailureReason } from "@/lib/api/failure";
 
 type Mode = "view" | "edit";
 
@@ -306,9 +307,12 @@ export function AppShell({ children }: Props) {
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as {
             reason?: string;
+            error?: string;
           };
           setQueryDisabled(true);
-          setQueryReason(body.reason ?? "TrueForge is not running.");
+          setQueryReason(
+            portalFailureReason(body, "TrueForge is not running."),
+          );
           return;
         }
         setQueryDisabled(false);
@@ -426,11 +430,15 @@ export function AppShell({ children }: Props) {
       body: JSON.stringify({ sessionId: tfSession }),
     });
     if (!created.ok) {
-      const body = (await created.json().catch(() => ({}))) as { reason?: string };
+      const body = (await created.json().catch(() => ({}))) as {
+        reason?: string;
+        error?: string;
+      };
+      const reason = portalFailureReason(body, "TrueForge is not running.");
       setQueryDisabled(true);
-      setQueryReason(body.reason ?? "TrueForge is not running.");
-      setAgent("error", body.reason ?? "TrueForge is not running.");
-      throw new Error(body.reason ?? "TrueForge is not running.");
+      setQueryReason(reason);
+      setAgent("error", reason);
+      throw new Error(reason);
     }
     const session = (await created.json()) as { id: string };
     localStorage.setItem(TF_SESSION, session.id);

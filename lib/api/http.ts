@@ -1,4 +1,5 @@
 import { parseDemoUser } from "@/lib/identity/demo-users";
+import { portalFailureReason } from "@/lib/api/failure";
 import { ForbiddenError, UnauthorizedError } from "@/lib/identity/errors";
 import { readSessionUserId } from "@/lib/identity/session";
 import { SessionBlockedError } from "@/lib/trueforge/gates";
@@ -11,6 +12,8 @@ export function userFromRequest(req: Request) {
   }
   return parseDemoUser(req.headers.get("x-demo-user"));
 }
+
+export { portalFailureReason } from "@/lib/api/failure";
 
 export function jsonError(err: unknown): Response {
   if (err instanceof UnauthorizedError) {
@@ -30,5 +33,6 @@ export function jsonError(err: unknown): Response {
     );
   }
   const message = err instanceof Error ? err.message : "Unexpected error";
-  return Response.json({ error: message }, { status: 400 });
+  const reason = portalFailureReason({ error: message }, message);
+  return Response.json({ error: message, reason }, { status: 400 });
 }
