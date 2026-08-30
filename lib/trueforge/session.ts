@@ -1,6 +1,7 @@
 import { TrueForgeError } from "@truefoundry/trueforge-sdk";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
+  adoptRun,
   appendRunEvent,
   bindRunPromptVersion,
   createRun,
@@ -107,8 +108,52 @@ export type TurnSummary = {
   }[];
   charts: { title: string; query: Record<string, unknown> }[];
   runId?: string;
+  sessionId?: string;
   events?: RunEvent[];
 };
+
+export function sessionBindDecision(input: {
+  hosted: boolean;
+  ownedLocally: boolean;
+  trueforgePresent: boolean;
+}): "use" | "create" | "reject" {
+  if (input.ownedLocally && input.trueforgePresent) return "use";
+  if (input.hosted) return "create";
+  if (!input.ownedLocally) return "reject";
+  return "create";
+}
+
+async function resolveSessionForTurn(
+  sessionId: string,
+  userId: string,
+  origin?: string | null,
+): Promise<string> {
+  const client = trueforge();
+  const db = getDb();
+  migrate(db);
+  const ownedLocally = isAgentSessionOwner(db, sessionId, userId);
+  let trueforgePresent = false;
+  if (ownedLocally) {
+    try {
+      await client.sessions.get(sessionId);
+      trueforgePresent = true;
+    } catch (err) {
+      const missing = err instanceof TrueForgeError && err.statusCode === 404;
+      if (!missing) throw err;
+    }
+  }
+  const decision = sessionBindDecision({
+    hosted: Boolean(process.env.VERCEL),
+    ownedLocally,
+    trueforgePresent,
+  });
+  if (decision === "use") return sessionId;
+  if (decision === "reject") {
+    throw new Error("Agent session not found");
+  }
+  const created = await resumeOrCreateSession(null, userId, origin);
+  return created.id;
+}
 
 function eventRecord(item: unknown): Record<string, unknown> {
   if (item && typeof item === "object" && "data" in item) {
@@ -288,12 +333,17 @@ export async function runUserTurn(
     kind?: RunKind;
     userId: string;
     displayMessage?: string;
+    origin?: string | null;
   },
 ): Promise<TurnSummary> {
   const client = trueforge();
   const db = getDb();
   migrate(db);
-  assertAgentSessionOwner(db, sessionId, options.userId);
+  sessionId = await resolveSessionForTurn(
+    sessionId,
+    options.userId,
+    options.origin,
+  );
   const runId = ensureRun(db, sessionId, options);
   const waiting = waitingRunForSession(db, {
     sessionId,
@@ -317,7 +367,8 @@ export async function runUserTurn(
   const stream = await client.sessions.createTurnStream(sessionId, {
     input: [{ type: "user.message", content: assembled.turnText }],
   });
-  return collectTurn(stream, runId);
+  const result = await collectTurn(stream, runId);
+  return { ...result, sessionId };
 }
 
 export async function runApprovalTurn(
@@ -393,6 +444,14 @@ function ensureRun(
   options: { runId?: string; kind?: RunKind; userId: string },
 ): string {
   if (options.runId) {
+    if (process.env.VERCEL) {
+      return adoptRun(db, {
+        id: options.runId,
+        sessionId,
+        userId: options.userId,
+        kind: options.kind ?? "question",
+      }).id;
+    }
     const existing = getRun(db, options.runId);
     if (
       !existing ||

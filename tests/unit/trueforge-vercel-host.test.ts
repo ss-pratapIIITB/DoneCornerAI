@@ -4,6 +4,7 @@ import { trueforgeBaseUrl } from "@/lib/trueforge/client";
 import {
   asRequest,
   openaiProviderSeedBody,
+  openaiUpstreamModelId,
   patchTrueForgeMain,
   prepareHostedEnv,
   probeTimeoutMs,
@@ -77,12 +78,18 @@ describe("TrueForge on Vercel", () => {
     expect(patched).not.toMatch(/\bserve\(/);
   });
 
+  it("maps TrueForge catalog names to the OpenAI model_id the API expects", () => {
+    expect(openaiUpstreamModelId("openai/gpt-5-4-mini")).toBe("gpt-5.4-mini");
+    expect(openaiUpstreamModelId("gpt-5-6-sol")).toBe("gpt-5.6-sol");
+    expect(openaiUpstreamModelId("gpt-4o")).toBe("gpt-4o");
+  });
+
   it("seeds OpenAI with snake_case fields TrueForge Zod will accept", () => {
     const body = openaiProviderSeedBody("sk-test", "openai/gpt-5-4-mini");
     expect(body.manifest.type).toBe("openai");
     expect(body.manifest.auth).toEqual({ api_key: "sk-test" });
     expect(body.manifest.models).toEqual([
-      { model_id: "gpt-5-4-mini", name: "gpt-5-4-mini", properties: {} },
+      { model_id: "gpt-5.4-mini", name: "gpt-5-4-mini", properties: {} },
     ]);
     expect(JSON.stringify(body)).not.toMatch(/apiKey|modelId/);
   });

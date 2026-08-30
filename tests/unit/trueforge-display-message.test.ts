@@ -9,6 +9,7 @@ vi.mock("@/lib/trueforge/client", () => ({
   trueforgeBaseUrl: () => "http://trueforge.test",
   trueforge: () => ({
     sessions: {
+      get: async (sessionId: string) => ({ data: { id: sessionId } }),
       createTurnStream: async (
         _sessionId: string,
         input: { input: { content: string }[] },

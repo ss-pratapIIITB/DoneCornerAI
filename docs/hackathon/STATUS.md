@@ -8,7 +8,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 
 **Phase:** 4 — Hackathon evidence
 
-**Current step:** Hosted TrueForge on Vercel — OpenAI provider seed.
+**Current step:** Hosted TrueForge on Vercel — OpenAI model_id + Fluid session hop.
 
 ## Phase 1 — Brainstorm (`brainstorming`)
 
@@ -105,6 +105,8 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-30 | TrueForge runs in-process on the Vercel portal | Production cannot reach localhost:8790; same deployment owns the harness |
 | 2026-08-31 | Hosted OpenAI seed uses snake_case `api_key` / `model_id` | Strict TrueForge Zod rejected camelCase; sessions 422'd as unknown model |
 | 2026-08-31 | Close-pack sandbox is off on Vercel | No Daytona/bwrap in the function; sample pack still loads without a sandbox |
+| 2026-08-31 | Seed OpenAI `model_id` from the TrueForge catalog (`gpt-5.4-mini`), not the hyphenated name | Lookup by name succeeded; OpenAI rejected `gpt-5-4-mini` and the turn failed in ~1s |
+| 2026-08-31 | On Vercel, a turn recreates the TrueForge session and adopts the run id after a Fluid hop | Portal + TrueForge sqlite are instance-local; session create and turn often land on different instances |
 
 ## Open questions
 

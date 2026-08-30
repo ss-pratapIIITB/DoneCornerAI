@@ -62,6 +62,7 @@ function toEvent(row: EventRow): RunEvent {
 export function createRun(
   db: DatabaseSync,
   input: {
+    id?: string;
     sessionId: string;
     userId: string;
     kind: RunKind;
@@ -70,7 +71,7 @@ export function createRun(
 ): AgentRun {
   const now = new Date().toISOString();
   const run: AgentRun = {
-    id: randomUUID(),
+    id: input.id ?? randomUUID(),
     sessionId: input.sessionId,
     userId: input.userId,
     kind: input.kind,
@@ -96,6 +97,28 @@ export function createRun(
     run.updatedAt,
   );
   return run;
+}
+
+export function adoptRun(
+  db: DatabaseSync,
+  input: {
+    id: string;
+    sessionId: string;
+    userId: string;
+    kind: RunKind;
+  },
+): AgentRun {
+  const existing = getRun(db, input.id);
+  if (!existing) return createRun(db, input);
+  if (existing.userId !== input.userId) {
+    throw new Error("Run does not belong to this session");
+  }
+  if (existing.sessionId === input.sessionId) return existing;
+  const updatedAt = new Date().toISOString();
+  db.prepare(
+    `UPDATE agent_runs SET session_id = ?, updated_at = ? WHERE id = ?`,
+  ).run(input.sessionId, updatedAt, input.id);
+  return { ...existing, sessionId: input.sessionId, updatedAt };
 }
 
 export function getRun(db: DatabaseSync, runId: string): AgentRun | null {

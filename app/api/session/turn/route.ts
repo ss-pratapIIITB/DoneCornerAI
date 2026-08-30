@@ -54,6 +54,7 @@ export async function POST(req: Request): Promise<Response> {
       kind: body.kind,
       userId: user.id,
       displayMessage: body.displayMessage,
+      origin: req.url,
     });
     return Response.json(result);
   } catch (err) {

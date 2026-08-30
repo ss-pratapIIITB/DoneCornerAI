@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { getDb, migrate } from "@/lib/db/sqlite";
 import {
+  adoptRun,
   appendRunEvent,
   bindRunPromptVersion,
   createRun,
@@ -130,5 +131,56 @@ describe("run ledger", () => {
     bindRunPromptVersion(db, run.id, "prompt_old");
     bindRunPromptVersion(db, run.id, "prompt_new");
     expect(getRun(db, run.id)?.promptVersionId).toBe("prompt_new");
+  });
+
+  it("adopts a run id that another Fluid instance created", () => {
+    const db = freshDb();
+    const adopted = adoptRun(db, {
+      id: "run-from-other-instance",
+      sessionId: "session-here",
+      userId: "cfo",
+      kind: "question",
+    });
+    expect(adopted.id).toBe("run-from-other-instance");
+    expect(getRun(db, "run-from-other-instance")).toMatchObject({
+      sessionId: "session-here",
+      userId: "cfo",
+    });
+  });
+
+  it("rebinds an owned run onto the session this instance just created", () => {
+    const db = freshDb();
+    const run = createRun(db, {
+      id: "run-rebind",
+      sessionId: "session-old",
+      userId: "cfo",
+      kind: "question",
+    });
+    const rebound = adoptRun(db, {
+      id: run.id,
+      sessionId: "session-new",
+      userId: "cfo",
+      kind: "question",
+    });
+    expect(rebound.sessionId).toBe("session-new");
+    expect(getRun(db, run.id)?.sessionId).toBe("session-new");
+  });
+
+  it("does not let another identity adopt a run", () => {
+    const db = freshDb();
+    createRun(db, {
+      id: "run-owned",
+      sessionId: "session-cfo",
+      userId: "cfo",
+      kind: "question",
+    });
+    expect(() =>
+      adoptRun(db, {
+        id: "run-owned",
+        sessionId: "session-fpna",
+        userId: "fpna",
+        kind: "question",
+      }),
+    ).toThrow(/does not belong/i);
   });
 });

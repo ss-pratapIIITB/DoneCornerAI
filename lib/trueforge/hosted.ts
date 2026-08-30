@@ -58,17 +58,36 @@ export function prepareHostedEnv(): void {
 
 let booting: Promise<typeof fetch> | null = null;
 
+/** TrueForge resource names use hyphens; OpenAI catalog model_ids use dots. */
+export function openaiUpstreamModelId(modelName: string): string {
+  const name = modelName.replace(/^openai\//, "");
+  const catalog: Record<string, string> = {
+    "gpt-5-4-mini": "gpt-5.4-mini",
+    "gpt-5-5": "gpt-5.5",
+    "gpt-5-6-luna": "gpt-5.6-luna",
+    "gpt-5-6-sol": "gpt-5.6-sol",
+    "gpt-5-6-terra": "gpt-5.6-terra",
+  };
+  return catalog[name] ?? name;
+}
+
 /** TrueForge Zod is snake_case + strict; camelCase PUTs never register a provider. */
 export function openaiProviderSeedBody(
   apiKey: string,
   modelName = process.env.TRUEFORGE_MODEL ?? "openai/gpt-5-4-mini",
 ) {
-  const modelId = modelName.replace(/^openai\//, "");
+  const name = modelName.replace(/^openai\//, "");
   return {
     manifest: {
       type: "openai" as const,
       auth: { api_key: apiKey },
-      models: [{ model_id: modelId, name: modelId, properties: {} }],
+      models: [
+        {
+          model_id: openaiUpstreamModelId(modelName),
+          name,
+          properties: {},
+        },
+      ],
     },
   };
 }

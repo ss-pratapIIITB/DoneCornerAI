@@ -562,6 +562,7 @@ export function AppShell({ children }: Props) {
       status: AgentStatus;
       output: string;
       runId?: string;
+      sessionId?: string;
       events?: RunEvent[];
       pendingApprovals?: {
         threadId: string;
@@ -571,6 +572,10 @@ export function AppShell({ children }: Props) {
       }[];
       charts?: { title: string; query: Record<string, unknown> }[];
     };
+    if (result.sessionId) {
+      localStorage.setItem(TF_SESSION, result.sessionId);
+      setTfSession(result.sessionId);
+    }
     const events = result.events?.length
       ? result.events
       : await readRunEvents(run.id, []);
