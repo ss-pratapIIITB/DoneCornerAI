@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+
 const FETCH_CAPTURE = `globalThis.__TRUEFORGE_FETCH = app.fetch.bind(app);
   const server = { on() {}, close(cb) { cb && cb(); } };`;
 
@@ -30,9 +32,17 @@ function publicOrigin(): string | null {
   return host ? `https://${host}` : null;
 }
 
-function prepareHostedEnv(): void {
+export function prepareHostedEnv(): void {
   process.env.STANDALONE ??= "true";
+  process.env.HOME = "/tmp";
+  process.env.XDG_DATA_HOME = "/tmp/trueforge-xdg";
+  process.env.XDG_CONFIG_HOME = "/tmp/trueforge-config";
+  process.env.XDG_CACHE_HOME = "/tmp/trueforge-cache";
   process.env.SQLITE_PATH ??= "/tmp/trueforge.sqlite";
+  mkdirSync("/tmp/trueforge-xdg", { recursive: true });
+  mkdirSync("/tmp/trueforge-config", { recursive: true });
+  mkdirSync("/tmp/trueforge-cache", { recursive: true });
+  mkdirSync("/tmp/.local/share/trueforge", { recursive: true });
   const origin = publicOrigin();
   if (origin && !process.env.PUBLIC_BASE_URL) {
     process.env.PUBLIC_BASE_URL = origin;
@@ -72,8 +82,16 @@ async function seedOpenAi(fetchFn: typeof fetch): Promise<void> {
 
 async function boot(): Promise<typeof fetch> {
   prepareHostedEnv();
-  // @ts-expect-error no types for the published dist entry
-  await import("@truefoundry/trueforge/dist/main.js");
+  const exit = process.exit.bind(process);
+  process.exit = ((code?: number) => {
+    throw new Error(`TrueForge aborted with code ${String(code ?? 0)}`);
+  }) as typeof process.exit;
+  try {
+    // @ts-expect-error no types for the published dist entry
+    await import("@truefoundry/trueforge/dist/main.js");
+  } finally {
+    process.exit = exit;
+  }
   const fetchFn = globalThis.__TRUEFORGE_FETCH;
   if (!fetchFn) {
     throw new Error("TrueForge started without capturing fetch");
@@ -86,7 +104,12 @@ export async function hostedFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
-  if (!booting) booting = boot();
+  if (!booting) {
+    booting = boot().catch((error: unknown) => {
+      booting = null;
+      throw error;
+    });
+  }
   const fetchFn = await booting;
   return fetchFn(input, init);
 }

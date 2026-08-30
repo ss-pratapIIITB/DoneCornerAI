@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { donecornerMcpUrl } from "@/lib/trueforge/harness";
 import { trueforgeBaseUrl } from "@/lib/trueforge/client";
-import { patchTrueForgeMain, probeTimeoutMs } from "@/lib/trueforge/hosted";
+import { patchTrueForgeMain, prepareHostedEnv, probeTimeoutMs } from "@/lib/trueforge/hosted";
 
 describe("TrueForge on Vercel", () => {
   afterEach(() => {
@@ -12,6 +12,12 @@ describe("TrueForge on Vercel", () => {
     delete process.env.VERCEL_URL;
     delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
     delete process.env.PORT;
+    delete process.env.HOME;
+    delete process.env.XDG_DATA_HOME;
+    delete process.env.XDG_CONFIG_HOME;
+    delete process.env.XDG_CACHE_HOME;
+    delete process.env.SQLITE_PATH;
+    delete process.env.STANDALONE;
   });
 
   it("points the SDK at the production host when TRUEFORGE_BASE_URL is unset", () => {
@@ -31,6 +37,14 @@ describe("TrueForge on Vercel", () => {
   it("waits longer for a cold start on Vercel", () => {
     process.env.VERCEL = "1";
     expect(probeTimeoutMs()).toBeGreaterThanOrEqual(15_000);
+  });
+
+  it("points sandbox and sqlite paths at /tmp so Vercel can mkdir them", () => {
+    process.env.VERCEL = "1";
+    prepareHostedEnv();
+    expect(process.env.HOME).toBe("/tmp");
+    expect(process.env.XDG_DATA_HOME).toBe("/tmp/trueforge-xdg");
+    expect(process.env.SQLITE_PATH).toBe("/tmp/trueforge.sqlite");
   });
 
   it("stops TrueForge from binding a listen port and captures fetch instead", () => {

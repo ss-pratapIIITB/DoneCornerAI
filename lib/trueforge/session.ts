@@ -44,7 +44,8 @@ export async function probeTrueForge(): Promise<{ ok: true } | { ok: false; reas
       return { ok: false, reason: "TrueForge API is not reachable." };
     }
     return { ok: true };
-  } catch {
+  } catch (error) {
+    console.error("probeTrueForge failed", error);
     return {
       ok: false,
       reason: process.env.VERCEL
