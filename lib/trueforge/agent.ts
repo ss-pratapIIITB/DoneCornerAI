@@ -46,7 +46,7 @@ export function closePackSpec(modelName: string): TrueForgeApi.AgentSpec {
     model: { name: modelName },
     instructions: `${SAFETY_POLICY}\n\n${TOOL_POLICY}\n\n${CLOSE_PACK_INSTRUCTIONS}`,
     config: {
-      sandbox: { enabled: true },
+      sandbox: { enabled: !process.env.VERCEL },
       dynamicSubAgents: { enabled: true },
       askUserQuestions: { enabled: false },
     },

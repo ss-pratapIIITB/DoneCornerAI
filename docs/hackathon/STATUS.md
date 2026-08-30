@@ -104,6 +104,7 @@ Hackathon ends **Sun 30 Aug 2026, 20:00 London**. Today when this was created: *
 | 2026-08-28 | Public fetch follows redirects only onto the allowlist; JSON uses a larger cap | Qodo High on PR 17: 24k truncation broke EDGAR; auto-follow was SSRF |
 | 2026-08-30 | TrueForge runs in-process on the Vercel portal | Production cannot reach localhost:8790; same deployment owns the harness |
 | 2026-08-31 | Hosted OpenAI seed uses snake_case `api_key` / `model_id` | Strict TrueForge Zod rejected camelCase; sessions 422'd as unknown model |
+| 2026-08-31 | Close-pack sandbox is off on Vercel | No Daytona/bwrap in the function; sample pack still loads without a sandbox |
 
 ## Open questions
 

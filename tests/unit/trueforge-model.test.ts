@@ -13,6 +13,8 @@ describe("closePackModel", () => {
     delete process.env.TRUEFORGE_MODEL;
     delete process.env.DONECORNER_MCP_URL;
     delete process.env.PORT;
+    delete process.env.VERCEL;
+    delete process.env.TRUEFORGE_SANDBOX;
   });
 
   it("defaults to the cheapest configured OpenAI model", () => {
@@ -43,6 +45,20 @@ describe("closePackModel", () => {
 
   it("does not require TrueForge skills that may be unconfigured", () => {
     expect(closePackSpec("openai/gpt-5-4-mini").skills ?? []).toEqual([]);
+  });
+
+  it("leaves sandbox off on Vercel where Daytona and bwrap are missing", () => {
+    process.env.VERCEL = "1";
+    expect(closePackSpec("openai/gpt-5-4-mini").config?.sandbox).toEqual({
+      enabled: false,
+    });
+  });
+
+  it("keeps sandbox on locally so inspect can still run generated code", () => {
+    delete process.env.VERCEL;
+    expect(closePackSpec("openai/gpt-5-4-mini").config?.sandbox).toEqual({
+      enabled: true,
+    });
   });
 
   it("puts immutable safety and tool policy on the agent spec, not only in user turns", () => {
